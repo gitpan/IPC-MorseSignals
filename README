@@ -1,0 +1,86 @@
+NAME
+    IPC::MorseSignals - Communicate between processes with Morse signals.
+
+VERSION
+    Version 0.01
+
+SYNOPSIS
+        use IPC::MorseSignals qw/msend mrecv/;
+
+        my $pid = fork;
+        if (!defined $pid) {
+         die "fork() failed: $!";
+        } elsif ($pid == 0) {
+         local @SIG{qw/USR1 USR2/} = mrecv sub { print STDERR "recieved $_[0]!\n" };
+         1 while 1;
+        }
+        msend "hello!\n" => $pid;
+        waitpid $pid, 0;
+
+DESCRIPTION
+    This module implements a rare form of IPC by sending Morse-like signals
+    through "SIGUSR1" and "SIGUSR2". It uses both signals "SIGUSR1" and
+    "SIGUSR2", so you won't be able to keep them for something else when you
+    use this module.
+
+    But, seriously, use something else for your IPC. :)
+
+FUNCTIONS
+  "msend"
+        msend $msg, $pid [, $speed ]
+
+    Sends the string $msg to the process $pid (or to all the processes @$pid
+    if $pid is an array ref) at $speed bits per second. Default speed is
+    1000, don't set it too low or the target will miss bits and the whole
+    message will be crippled.
+
+  "mrecv"
+        mrecv $callback
+
+    Takes as its sole argument the callback triggered when a complete
+    message is received, and returns two code references that should replace
+    SIGUSR1 and SIGUSR2 signal handlers. Basically, you want to use it like
+    this :
+
+        local @SIG{qw/USR1 USR2/} = mrecv sub { ... };
+
+EXPORT
+    This module exports on request its two only functions, "msend" and
+    "mrecv".
+
+DEPENDENCIES
+    POSIX (standard since perl 5) and Time::HiRes (standard since perl
+    5.7.3) are required.
+
+SEE ALSO
+    perlipc for information about signals.
+
+    For truely useful IPC, search for shared memory, pipes and semaphores.
+
+AUTHOR
+    Vincent Pit, "<perl at profvince.com>"
+
+    You can contact me by mail or on #perl @ FreeNode (Prof_Vince).
+
+BUGS
+    Please report any bugs or feature requests to "bug-ipc-morsesignals at
+    rt.cpan.org", or through the web interface at
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=IPC-MorseSignals>. I
+    will be notified, and then you'll automatically be notified of progress
+    on your bug as I make changes.
+
+SUPPORT
+    You can find documentation for this module with the perldoc command.
+
+        perldoc IPC::MorseSignals
+
+ACKNOWLEDGEMENTS
+    Thanks for the inspiration, mofino ! I hope this module will fill all
+    your IPC needs. :)
+
+COPYRIGHT & LICENSE
+    Copyright 2007 Vincent Pit, all rights reserved.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+

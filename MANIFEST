@@ -1,0 +1,14 @@
+Changes
+MANIFEST
+META.yml # Will be created by "make dist"
+Makefile.PL
+README
+lib/IPC/MorseSignals.pm
+samples/tryityourself.pl
+t/00-load.t
+t/01-import.t
+t/10-base.t
+t/boilerplate.t
+t/kwalitee.t
+t/pod-coverage.t
+t/pod.t
