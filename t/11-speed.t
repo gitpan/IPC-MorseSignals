@@ -14,7 +14,7 @@ sub tryspeed {
  my $ok = 0;
  my $msg = join '', map { chr int rand 256 } 1 .. $l;
  my $desc;
- while (($speed >= 1) && ($ok < $n)) {
+ while (($speed > 1) && ($ok < $n)) {
   $desc = "$n sends of $l bytes at $speed bits/s";
   $speed /= 2;
   $ok = 0;
@@ -36,7 +36,7 @@ TRY:
    }
    close $wtr or die "$desc: close() failed : $!";
    eval {
-    local $SIG{ALRM} = sub { die 'alarm' };
+    local $SIG{ALRM} = sub { die 'timeout' };
     my $a = (int(100 * (3 * $l) / $speed) || 1);
     $a = 10 if $a > 10;
     alarm $a;

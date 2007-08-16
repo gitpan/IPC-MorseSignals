@@ -31,5 +31,6 @@ sub trysig {
  ok($ret == EXIT_SUCCESS, $s);
 }
 
+sleep 1;
 trysig SIGUSR1, 'USR1';
 trysig SIGUSR2, 'USR2';
