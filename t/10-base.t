@@ -1,38 +1,43 @@
 #!perl -T
 
-use Test::More tests => 6;
+use Test::More tests => 7 * 5;
 
-use POSIX qw/SIGTERM SIGKILL EXIT_SUCCESS/;
+use POSIX qw/SIGINT SIGTERM SIGKILL EXIT_SUCCESS/;
 
 use IPC::MorseSignals qw/msend mrecv/;
 
-sub try2send {
+my $speed = 128;
+
+sub trysend {
  my ($msg, $desc) = @_;
- pipe $rdr, $wtr or die "pipe() failed : $!";
+ pipe my $rdr, my $wtr or die "$desc: pipe() failed : $!";
  my $pid = fork;
  if (!defined $pid) {
-  die "fork() failed : $!";
+  die "$desc: fork() failed : $!";
  } elsif ($pid == 0) {
   close $rdr;
   local @SIG{qw/USR1 USR2/} = mrecv sub {
    print $wtr $_[0], "\n";
+   close $wtr;
    exit EXIT_SUCCESS;
   };
   1 while 1;
  }
- close $wtr or die "close() failed : $!";
- msend $msg => $pid, 100;
+ close $wtr or die "$desc: close() failed : $!";
  eval {
-  local $SIG{ALRM} = sub { die };
-  alarm 5;
+  local $SIG{ALRM} = sub { die 'timeout' };
+  my $a = (int(100 * (3 * length $msg) / $speed) || 1);
+  $a = 10 if $a > 10;
+  alarm $a;
+  msend $msg => $pid, $speed;
   waitpid $pid, 0;
-  alarm 0;
  };
+ alarm 0;
  if ($@) {
   kill SIGINT,  $pid;
   kill SIGTERM, $pid;
   kill SIGKILL, $pid;
-  die "$@ in $desc";
+  die "$desc: died ($@)";
  }
  my $recv = do { local $/; <$rdr> };
  close $rdr;
@@ -40,9 +45,12 @@ sub try2send {
  ok($msg eq $recv, $desc);
 }
 
-try2send 'hello', 'ascii';
-try2send 'éàùçà', 'extended';
-try2send '€€€', 'unicode';
-try2send 'a€bécàd€e', 'mixed';
-try2send "\x{FF}", 'lots of bits';
-try2send "a\0b", 'null character';
+for (1 .. 5) {
+ trysend 'hello', 'ascii';
+ trysend 'éàùçà', 'extended';
+ trysend '€€€', 'unicode';
+ trysend 'a€bécàd€e', 'mixed';
+ trysend "\0" x 10, 'few bits';
+ trysend "\x{FF}" x 10, 'lots of bits';
+ trysend "a\0b", 'null character';
+}

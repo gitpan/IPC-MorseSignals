@@ -12,11 +12,11 @@ IPC::MorseSignals - Communicate between processes with Morse signals.
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -26,7 +26,10 @@ our $VERSION = '0.01';
     if (!defined $pid) {
      die "fork() failed: $!";
     } elsif ($pid == 0) {
-     local @SIG{qw/USR1 USR2/} = mrecv sub { print STDERR "recieved $_[0]!\n" };
+     local @SIG{qw/USR1 USR2/} = mrecv sub {
+      print STDERR "received $_[0]!\n";
+      exit
+     };
      1 while 1;
     }
     msend "hello!\n" => $pid;
@@ -34,7 +37,7 @@ our $VERSION = '0.01';
 
 =head1 DESCRIPTION
 
-This module implements a rare form of IPC by sending Morse-like signals through C<SIGUSR1> and C<SIGUSR2>. It uses both signals C<SIGUSR1> and C<SIGUSR2>, so you won't be able to keep them for something else when you use this module.
+This module implements a rare form of IPC by sending Morse-like signals through C<SIGUSR1> and C<SIGUSR2>. Both of those signals are used, so you won't be able to keep them for something else when you use this module.
 
 But, seriously, use something else for your IPC. :)
 
@@ -44,7 +47,7 @@ But, seriously, use something else for your IPC. :)
 
     msend $msg, $pid [, $speed ]
 
-Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if $pid is an array ref) at C<$speed> bits per second. Default speed is 1000, don't set it too low or the target will miss bits and the whole message will be crippled.
+Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if $pid is an array ref) at C<$speed> bits per second. Default speed is 512, don't set it too low or the target will miss bits and the whole message will be crippled.
 
 =cut
 
@@ -52,7 +55,7 @@ sub msend {
  my ($msg, $pid, $speed) = @_;
  my @pid = (ref $pid eq 'ARRAY') ? @$pid : $pid;
  return unless @pid && $msg;
- $speed ||= 1000;
+ $speed ||= 512;
  my $delay = int(1_000_000 / $speed);
  my @bits = split //, unpack 'B*', $msg;
  my ($c, $n, @l) = (2, 0, 0, 0, 0);
@@ -88,11 +91,12 @@ Takes as its sole argument the callback triggered when a complete message is rec
 
 sub mrecv {
  my ($cb) = @_;
- my ($bits, $state, $c, $n, $end) = ('', 0, undef, 0, undef);
+ return unless $cb;
+ my ($bits, $state, $c, $n, $end) = ('', 0, undef, 0, '');
  my $sighandler = sub {
   my ($b) = @_;
   if ($state == 2) {
-   if ((substr $bits, -$n) eq $end) { # done
+   if (defined $bits && (substr $bits, -$n) eq $end) { # done
     substr $bits, -$n, $n, '';
     $cb->(pack 'B*', $bits);
    }
@@ -131,13 +135,35 @@ our %EXPORT_TAGS    = ( 'funcs' => [ qw/msend mrecv/ ] );
 our @EXPORT_OK      = map { @$_ } values %EXPORT_TAGS;
 $EXPORT_TAGS{'all'} = \@EXPORT_OK;
 
+=head1 PROTOCOL
+
+Each byte of the data string is converted into its bits sequence, with bits of highest weight coming first. All those bits sequences are put into the same order as the characters occur in the stream. The emitter computes then the longuest sequence of successives 0 (say, C<m>) and 1 (C<n>). A signature is then chosen :
+
+=over 4
+
+=item If C(m > n), we take C<n+1> times 1 follewed by C<1> 0 ;
+
+=item Otherwise, we take C<m+1> times 0 follewed by C<1> 1.
+
+=back
+
+The signal is then formed by concatenating the signature, the data bits and the reversed signature (i.e. the bits of the signature in the reverse order).
+
+The receiver knows that the signature has been sent when it has catched at least one 0 and one 1. The signal is completely transferred when it has received for the first time the whole reversed signature.
+
+=head1 CAVEATS
+
+This type of IPC is highly unreliable. Send little data at slow speed if you want it to reach its goal.
+
+SIGUSR{1,2} seem to interrupt sleep, so it's not a good idea to transfer data to a sleeping process.
+
 =head1 DEPENDENCIES
 
 L<POSIX> (standard since perl 5) and L<Time::HiRes> (standard since perl 5.7.3) are required.
 
 =head1 SEE ALSO
 
-L<perlipc> for information about signals.
+L<perlipc> for information about signals in perl.
 
 For truely useful IPC, search for shared memory, pipes and semaphores.
 

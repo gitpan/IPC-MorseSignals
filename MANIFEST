@@ -5,9 +5,12 @@ Makefile.PL
 README
 lib/IPC/MorseSignals.pm
 samples/tryityourself.pl
+samples/bench.pl
 t/00-load.t
 t/01-import.t
+t/02-sigusr.t
 t/10-base.t
+t/11-speed.t
 t/boilerplate.t
 t/kwalitee.t
 t/pod-coverage.t

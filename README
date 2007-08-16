@@ -2,7 +2,7 @@ NAME
     IPC::MorseSignals - Communicate between processes with Morse signals.
 
 VERSION
-    Version 0.01
+    Version 0.02
 
 SYNOPSIS
         use IPC::MorseSignals qw/msend mrecv/;
@@ -11,7 +11,10 @@ SYNOPSIS
         if (!defined $pid) {
          die "fork() failed: $!";
         } elsif ($pid == 0) {
-         local @SIG{qw/USR1 USR2/} = mrecv sub { print STDERR "recieved $_[0]!\n" };
+         local @SIG{qw/USR1 USR2/} = mrecv sub {
+          print STDERR "received $_[0]!\n";
+          exit
+         };
          1 while 1;
         }
         msend "hello!\n" => $pid;
@@ -19,9 +22,8 @@ SYNOPSIS
 
 DESCRIPTION
     This module implements a rare form of IPC by sending Morse-like signals
-    through "SIGUSR1" and "SIGUSR2". It uses both signals "SIGUSR1" and
-    "SIGUSR2", so you won't be able to keep them for something else when you
-    use this module.
+    through "SIGUSR1" and "SIGUSR2". Both of those signals are used, so you
+    won't be able to keep them for something else when you use this module.
 
     But, seriously, use something else for your IPC. :)
 
@@ -31,7 +33,7 @@ FUNCTIONS
 
     Sends the string $msg to the process $pid (or to all the processes @$pid
     if $pid is an array ref) at $speed bits per second. Default speed is
-    1000, don't set it too low or the target will miss bits and the whole
+    512, don't set it too low or the target will miss bits and the whole
     message will be crippled.
 
   "mrecv"
@@ -48,12 +50,37 @@ EXPORT
     This module exports on request its two only functions, "msend" and
     "mrecv".
 
+PROTOCOL
+    Each byte of the data string is converted into its bits sequence, with
+    bits of highest weight coming first. All those bits sequences are put
+    into the same order as the characters occur in the stream. The emitter
+    computes then the longuest sequence of successives 0 (say, "m") and 1
+    ("n"). A signature is then chosen :
+
+    If C(m > n), we take "n+1" times 1 follewed by 1 0 ;
+    Otherwise, we take "m+1" times 0 follewed by 1 1.
+
+    The signal is then formed by concatenating the signature, the data bits
+    and the reversed signature (i.e. the bits of the signature in the
+    reverse order).
+
+    The receiver knows that the signature has been sent when it has catched
+    at least one 0 and one 1. The signal is completely transferred when it
+    has received for the first time the whole reversed signature.
+
+CAVEATS
+    This type of IPC is highly unreliable. Send little data at slow speed if
+    you want it to reach its goal.
+
+    SIGUSR{1,2} seem to interrupt sleep, so it's not a good idea to transfer
+    data to a sleeping process.
+
 DEPENDENCIES
     POSIX (standard since perl 5) and Time::HiRes (standard since perl
     5.7.3) are required.
 
 SEE ALSO
-    perlipc for information about signals.
+    perlipc for information about signals in perl.
 
     For truely useful IPC, search for shared memory, pipes and semaphores.
 

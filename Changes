@@ -1,5 +1,11 @@
 Revision history for IPC-MorseSignals
 
+0.02    2007-08-16 15:55 UTC
+        + Add : samples/bench.pl, a transfer speed benchmark script.
+        + Add : New tests : t/02-sigusr.t, t/11-speed.t
+        + Fix : Warnings when the transfer fails.
+	+ Doc : The protocol was documented.
+
 0.01    2007-08-15 21:20 UTC
         First version, released on an unsuspecting world.
 
