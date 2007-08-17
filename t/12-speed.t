@@ -2,7 +2,7 @@
 
 use Test::More tests => 12;
 
-use POSIX qw/SIGINT SIGTERM SIGKILL EXIT_SUCCESS/;
+use POSIX qw/SIGINT SIGTERM SIGKILL EXIT_SUCCESS EXIT_FAILURE WIFEXITED WEXITSTATUS/;
 
 use IPC::MorseSignals qw/msend mrecv/;
 
@@ -12,55 +12,46 @@ sub tryspeed {
  my ($l, $n) = @_;
  my $speed = 2 ** 16;
  my $ok = 0;
- my $msg = join '', map { chr int rand 256 } 1 .. $l;
+ my @alpha = ('a' .. 'z');
+ my $msg = join '', map { $alpha[rand @alpha] } 1 .. $l;
  my $desc;
  while (($speed > 1) && ($ok < $n)) {
-  $desc = "$n sends of $l bytes at $speed bits/s";
   $speed /= 2;
+  $desc = "$n sends of $l bytes at $speed bits/s";
   $ok = 0;
   diag("try $desc...");
 TRY:
   for (1 .. $n) {
-   pipe my $rdr, my $wtr or die "$desc: pipe() failed : $!";
    my $pid = fork;
    if (!defined $pid) {
     die "$desc: fork() failed : $!";
    } elsif ($pid == 0) {
-    close $rdr;
     local @SIG{qw/USR1 USR2/} = mrecv sub {
-     print $wtr $_[0], "\n";
-     close $wtr;
-     exit EXIT_SUCCESS;
+     exit(($msg eq $_[0]) ? EXIT_SUCCESS : EXIT_FAILURE);
     };
     1 while 1;
+    exit EXIT_FAILURE;
    }
-   close $wtr or die "$desc: close() failed : $!";
    eval {
     local $SIG{ALRM} = sub { die 'timeout' };
     my $a = (int(100 * (3 * $l) / $speed) || 1);
     $a = 10 if $a > 10;
     alarm $a;
-    msend $msg => $pid, $speed;
+    msend $msg => $pid, speed => $speed;
     waitpid $pid, 0;
+    $ok += (WIFEXITED($?) && (WEXITSTATUS($?) == EXIT_SUCCESS));
    };
    alarm 0;
    if ($@) {
     kill SIGINT,  $pid;
     kill SIGTERM, $pid;
     kill SIGKILL, $pid;
-    close $rdr or die "$desc: close() failed : $!";
     last TRY;
    }
-   my $recv = do { local $/; <$rdr> };
-   close $rdr or die "$desc: close() failed : $!";
-   last TRY unless $recv;
-   chomp $recv;
-   last TRY unless $msg eq $recv;
-   ++$ok;
   }
  }
  $desc = "$l bytes sent $n times";
- ok($speed, $desc);
+ ok($speed >= 1, $desc);
  push @res, $desc . (($speed) ? ' at ' . $speed . ' bits/s' : ' failed');
 }
 

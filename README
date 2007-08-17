@@ -2,7 +2,7 @@ NAME
     IPC::MorseSignals - Communicate between processes with Morse signals.
 
 VERSION
-    Version 0.03
+    Version 0.04
 
 SYNOPSIS
         use IPC::MorseSignals qw/msend mrecv/;
@@ -29,22 +29,27 @@ DESCRIPTION
 
 FUNCTIONS
   "msend"
-        msend $msg, $pid [, $speed ]
+        msend $msg, $pid [, speed => $speed, utf8 => $utf8 ]
 
     Sends the string $msg to the process $pid (or to all the processes @$pid
-    if $pid is an array ref) at $speed bits per second. Default speed is
-    512, don't set it too low or the target will miss bits and the whole
-    message will be crippled.
+    if $pid is an array ref) at $speed bits per second. If the "utf8" flag
+    is set, the string will first be encoded in UTF-8. In this case, you
+    must turn it on for "mrecv" as well. Default speed is 512, don't set it
+    too low or the target will miss bits and the whole message will be
+    crippled. The "utf8" flag is turned off by default;
 
   "mrecv"
-        mrecv $callback
+        mrecv $callback [, utf => $utf8 ]
 
-    Takes as its sole argument the callback triggered when a complete
+    Takes as its first argument the callback triggered when a complete
     message is received, and returns two code references that should replace
     SIGUSR1 and SIGUSR2 signal handlers. Basically, you want to use it like
     this :
 
         local @SIG{qw/USR1 USR2/} = mrecv sub { ... };
+
+    Turn on the utf8 flag if you know that the incoming strings are expected
+    to be in UTF-8. This flag is turned off by default.
 
 EXPORT
     This module exports on request its two only functions, "msend" and
@@ -53,7 +58,7 @@ EXPORT
 PROTOCOL
     Each byte of the data string is converted into its bits sequence, with
     bits of highest weight coming first. All those bits sequences are put
-    into the same order as the characters occur in the stream. The emitter
+    into the same order as the characters occur in the string. The emitter
     computes then the longuest sequence of successives 0 (say, "m") and 1
     ("n"). A signature is then chosen :
 
@@ -82,7 +87,7 @@ DEPENDENCIES
 SEE ALSO
     perlipc for information about signals in perl.
 
-    For truely useful IPC, search for shared memory, pipes and semaphores.
+    For truly useful IPC, search for shared memory, pipes and semaphores.
 
 AUTHOR
     Vincent Pit, "<perl at profvince.com>"

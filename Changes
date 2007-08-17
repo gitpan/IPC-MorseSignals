@@ -1,5 +1,15 @@
 Revision history for IPC-MorseSignals
 
+0.04    2007-08-17 14:45 UTC
+        + Add : Test for SUGUSR{1,2} in Makefile.PL.
+        + Add : Unicode support. Enabled by passing utf8 => 1 to m{send,recv}.
+        + Chg : The speed must now be passed to msend() by speed => $speed.
+        + Chg : Tests no longer pass their result with pipes.
+        + Doc : <apeiron>  Prof_Vince, 'truely' isn't a word.
+        + Fix : t/11-speed.t didn't fail properly (as if those tests don't fail
+                enough yet!).
+        + Rem : t/02-sigusr.t, as it just seems to fail everywhere.
+
 0.03    2007-08-16 16:20 UTC
         + Chg : Better t/10-base.t... Or at least, I hope so.
 

@@ -3,6 +3,8 @@ package IPC::MorseSignals;
 use strict;
 use warnings;
 
+use utf8;
+
 use Time::HiRes qw/usleep/;
 use POSIX qw/SIGUSR1 SIGUSR2/;
 
@@ -12,11 +14,11 @@ IPC::MorseSignals - Communicate between processes with Morse signals.
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 =head1 SYNOPSIS
 
@@ -45,19 +47,27 @@ But, seriously, use something else for your IPC. :)
 
 =head2 C<msend>
 
-    msend $msg, $pid [, $speed ]
+    msend $msg, $pid [, speed => $speed, utf8 => $utf8 ]
 
-Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if $pid is an array ref) at C<$speed> bits per second. Default speed is 512, don't set it too low or the target will miss bits and the whole message will be crippled.
+Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if $pid is an array ref) at C<$speed> bits per second. If the C<utf8> flag is set, the string will first be encoded in UTF-8. In this case, you must turn it on for L</mrecv> as well.
+Default speed is 512, don't set it too low or the target will miss bits and the whole message will be crippled. The C<utf8> flag is turned off by default;
 
 =cut
 
 sub msend {
- my ($msg, $pid, $speed) = @_;
+ my ($msg, $pid, @o) = @_;
  my @pid = (ref $pid eq 'ARRAY') ? @$pid : $pid;
- return unless @pid && $msg;
- $speed ||= 512;
- my $delay = int(1_000_000 / $speed);
- my @bits = split //, unpack 'B*', $msg;
+ return unless @pid && $msg && !(@o % 2);
+ my %opts = @o;
+ $opts{speed} ||= 512;
+ $opts{utf8}  ||= 0;
+ my $delay = int(1_000_000 / $opts{speed});
+ my $tpl = 'B*';
+ if ($opts{utf8}) {
+  utf8::encode $msg;
+  $tpl = 'U0' . $tpl;
+ }
+ my @bits = split //, unpack $tpl, $msg;
  my ($c, $n, @l) = (2, 0, 0, 0, 0);
  for (@bits) {
   if ($c == $_) {
@@ -81,24 +91,31 @@ sub msend {
 
 =head2 C<mrecv>
 
-    mrecv $callback
+    mrecv $callback [, utf => $utf8 ]
 
-Takes as its sole argument the callback triggered when a complete message is received, and returns two code references that should replace SIGUSR1 and SIGUSR2 signal handlers. Basically, you want to use it like this :
+Takes as its first argument the callback triggered when a complete message is received, and returns two code references that should replace SIGUSR1 and SIGUSR2 signal handlers. Basically, you want to use it like this :
 
     local @SIG{qw/USR1 USR2/} = mrecv sub { ... };
+
+Turn on the utf8 flag if you know that the incoming strings are expected to be in UTF-8. This flag is turned off by default.
 
 =cut
 
 sub mrecv {
- my ($cb) = @_;
- return unless $cb;
+ my ($cb, @o) = @_;
+ return unless $cb && !(@o % 2);
+ my %opts = @o;
+ $opts{utf8} ||= 0;
  my ($bits, $state, $c, $n, $end) = ('', 0, undef, 0, '');
  my $sighandler = sub {
   my ($b) = @_;
   if ($state == 2) {
    if (defined $bits && (substr $bits, -$n) eq $end) { # done
     substr $bits, -$n, $n, '';
-    $cb->(pack 'B*', $bits);
+    my $tpl = 'B*';
+    $tpl = 'U0' . $tpl if $opts{utf8};
+    my $msg = pack $tpl, $bits;
+    $cb->($msg);
    }
   } elsif ($state == 1) {
    if ($c != $b) {
@@ -137,7 +154,7 @@ $EXPORT_TAGS{'all'} = \@EXPORT_OK;
 
 =head1 PROTOCOL
 
-Each byte of the data string is converted into its bits sequence, with bits of highest weight coming first. All those bits sequences are put into the same order as the characters occur in the stream. The emitter computes then the longuest sequence of successives 0 (say, C<m>) and 1 (C<n>). A signature is then chosen :
+Each byte of the data string is converted into its bits sequence, with bits of highest weight coming first. All those bits sequences are put into the same order as the characters occur in the string. The emitter computes then the longuest sequence of successives 0 (say, C<m>) and 1 (C<n>). A signature is then chosen :
 
 =over 4
 
@@ -165,7 +182,7 @@ L<POSIX> (standard since perl 5) and L<Time::HiRes> (standard since perl 5.7.3) 
 
 L<perlipc> for information about signals in perl.
 
-For truely useful IPC, search for shared memory, pipes and semaphores.
+For truly useful IPC, search for shared memory, pipes and semaphores.
 
 =head1 AUTHOR
 

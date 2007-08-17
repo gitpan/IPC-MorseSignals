@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                IPC-MorseSignals
-version:             0.03
+version:             0.04
 abstract:            Communicate between processes with Morse signals.
 license:             perl
 generated_by:        ExtUtils::MakeMaker version 6.36

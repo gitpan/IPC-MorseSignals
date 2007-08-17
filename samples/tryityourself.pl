@@ -16,5 +16,5 @@ if (!defined $pid) {
  1 while 1;
 }
 
-msend "This message was sent with IPC::MorseSignals\n" => $pid, 1000;
+msend "This message was sent with IPC::MorseSignals\n" => $pid;
 waitpid $pid, 0;
