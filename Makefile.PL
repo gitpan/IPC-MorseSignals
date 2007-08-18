@@ -28,9 +28,11 @@ WriteMakefile(
     ABSTRACT_FROM       => 'lib/IPC/MorseSignals.pm',
     PL_FILES            => {},
     PREREQ_PM => {
+        'Carp'        => 0,
         'POSIX'       => 0,
         'Test::More'  => 0,
         'Time::HiRes' => 0,
+        'utf8'        => 0,
     },
     dist                => {
         PREOP => 'pod2text lib/IPC/MorseSignals.pm > $(DISTVNAME)/README',

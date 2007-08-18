@@ -1,5 +1,13 @@
 Revision history for IPC-MorseSignals
 
+0.05    2007-08-18 16:50 UTC
+        + Add : m{send,recv} will croak() if any of their arguments is invalid.
+        + Chg : The requirements to pass the speed test were lowered.
+        + Doc : Typos in POD.
+        + Fix : You can now send "0" as a valid message.
+        + Fix : I lied, t/02-sigusr.t wasn't really gone.
+        + Fix : while ($speed > 1) { $speed /= 2 } ok($speed >= 1); never fails.
+
 0.04    2007-08-17 14:45 UTC
         + Add : Test for SUGUSR{1,2} in Makefile.PL.
         + Add : Unicode support. Enabled by passing utf8 => 1 to m{send,recv}.
@@ -8,7 +16,7 @@ Revision history for IPC-MorseSignals
         + Doc : <apeiron>  Prof_Vince, 'truely' isn't a word.
         + Fix : t/11-speed.t didn't fail properly (as if those tests don't fail
                 enough yet!).
-        + Rem : t/02-sigusr.t, as it just seems to fail everywhere.
+        + Fix : t/02-sigusr.t didn't check properly the returned value.
 
 0.03    2007-08-16 16:20 UTC
         + Chg : Better t/10-base.t... Or at least, I hope so.

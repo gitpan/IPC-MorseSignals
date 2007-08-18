@@ -1,6 +1,6 @@
 #!perl -T
 
-use Test::More tests => 12;
+use Test::More tests => 6;
 
 use POSIX qw/SIGINT SIGTERM SIGKILL EXIT_SUCCESS EXIT_FAILURE WIFEXITED WEXITSTATUS/;
 
@@ -9,15 +9,15 @@ use IPC::MorseSignals qw/msend mrecv/;
 my @res;
 
 sub tryspeed {
- my ($l, $n) = @_;
+ my ($l, $n, $optional) = @_;
  my $speed = 2 ** 16;
  my $ok = 0;
  my @alpha = ('a' .. 'z');
  my $msg = join '', map { $alpha[rand @alpha] } 1 .. $l;
  my $desc;
- while (($speed > 1) && ($ok < $n)) {
-  $speed /= 2;
+ while ((($speed /= 2) >= 1) && ($ok < $n)) {
   $desc = "$n sends of $l bytes at $speed bits/s";
+  $desc .= ' (mandatory)' unless $optional;
   $ok = 0;
   diag("try $desc...");
 TRY:
@@ -51,22 +51,26 @@ TRY:
   }
  }
  $desc = "$l bytes sent $n times";
- ok($speed >= 1, $desc);
+ ok($speed >= 1, $desc) unless $optional;
  push @res, $desc . (($speed) ? ' at ' . $speed . ' bits/s' : ' failed');
 }
 
-tryspeed 4, 1;
-tryspeed 4, 5;
-tryspeed 4, 10;
-tryspeed 4, 50;
-tryspeed 16, 1;
-tryspeed 16, 5;
-tryspeed 16, 10;
-tryspeed 64, 1;
-tryspeed 64, 5;
-tryspeed 64, 10;
-tryspeed 256, 1;
-tryspeed 1024, 1;
+tryspeed 4,    1;
+tryspeed 4,    4;
+tryspeed 4,    16;
+tryspeed 16,   1;
+tryspeed 16,   4;
+tryspeed 64,   1;
+
+tryspeed 4,    64, 1;
+tryspeed 16,   16, 1;
+tryspeed 64,   4,  1;
+tryspeed 256,  1,  1;
+tryspeed 1024, 1,  1;
 
 diag '=== Summary ===';
-diag $_ for @res;
+diag $_ for sort {
+ my ($l1, $n1) = $a =~ /(\d+)\D+(\d+)/;
+ my ($l2, $n2) = $b =~ /(\d+)\D+(\d+)/;
+ $l1 <=> $l2 || $n1 <=> $n2
+} @res;

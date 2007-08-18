@@ -5,8 +5,9 @@ use warnings;
 
 use utf8;
 
-use Time::HiRes qw/usleep/;
+use Carp qw/croak/;
 use POSIX qw/SIGUSR1 SIGUSR2/;
+use Time::HiRes qw/usleep/;
 
 =head1 NAME
 
@@ -14,11 +15,11 @@ IPC::MorseSignals - Communicate between processes with Morse signals.
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 =head1 SYNOPSIS
 
@@ -49,15 +50,17 @@ But, seriously, use something else for your IPC. :)
 
     msend $msg, $pid [, speed => $speed, utf8 => $utf8 ]
 
-Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if $pid is an array ref) at C<$speed> bits per second. If the C<utf8> flag is set, the string will first be encoded in UTF-8. In this case, you must turn it on for L</mrecv> as well.
-Default speed is 512, don't set it too low or the target will miss bits and the whole message will be crippled. The C<utf8> flag is turned off by default;
+Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if C<$pid> is an array ref) at C<$speed> bits per second. If the C<utf8> flag is set, the string will first be encoded in UTF-8. In this case, you must turn it on for L</mrecv> as well.
+Default speed is 512, don't set it too low or the target will miss bits and the whole message will be crippled. The C<utf8> flag is turned off by default.
 
 =cut
 
 sub msend {
  my ($msg, $pid, @o) = @_;
  my @pid = (ref $pid eq 'ARRAY') ? @$pid : $pid;
- return unless @pid && $msg && !(@o % 2);
+ return unless defined $msg && length $msg;
+ croak 'No PID was supplied' unless @pid;
+ croak 'Optional arguments must be passed as key => value pairs' if @o % 2;
  my %opts = @o;
  $opts{speed} ||= 512;
  $opts{utf8}  ||= 0;
@@ -93,7 +96,7 @@ sub msend {
 
     mrecv $callback [, utf => $utf8 ]
 
-Takes as its first argument the callback triggered when a complete message is received, and returns two code references that should replace SIGUSR1 and SIGUSR2 signal handlers. Basically, you want to use it like this :
+Takes as its first argument the callback triggered when a complete message is received, and returns two code references that should replace C<USR1> and C<USR2> signal handlers. Basically, you want to use it like this :
 
     local @SIG{qw/USR1 USR2/} = mrecv sub { ... };
 
@@ -103,7 +106,8 @@ Turn on the utf8 flag if you know that the incoming strings are expected to be i
 
 sub mrecv {
  my ($cb, @o) = @_;
- return unless $cb && !(@o % 2);
+ croak 'No callback was specified' unless $cb;
+ croak 'Optional arguments must be passed as key => value pairs' if @o % 2;
  my %opts = @o;
  $opts{utf8} ||= 0;
  my ($bits, $state, $c, $n, $end) = ('', 0, undef, 0, '');
@@ -154,13 +158,13 @@ $EXPORT_TAGS{'all'} = \@EXPORT_OK;
 
 =head1 PROTOCOL
 
-Each byte of the data string is converted into its bits sequence, with bits of highest weight coming first. All those bits sequences are put into the same order as the characters occur in the string. The emitter computes then the longuest sequence of successives 0 (say, C<m>) and 1 (C<n>). A signature is then chosen :
+Each byte of the data string is converted into its bits sequence, with bits of highest weight coming first. All those bits sequences are put into the same order as the characters occur in the string. The emitter computes then the longuest sequence of successives 0 (say, m) and 1 (n). A signature is then chosen :
 
 =over 4
 
-=item If C(m > n), we take C<n+1> times 1 follewed by C<1> 0 ;
+=item - If m > n, we take n+1 times 1 follewed by one 0 ;
 
-=item Otherwise, we take C<m+1> times 0 follewed by C<1> 1.
+=item - Otherwise, we take m+1 times 0 follewed by one 1.
 
 =back
 
@@ -172,11 +176,11 @@ The receiver knows that the signature has been sent when it has catched at least
 
 This type of IPC is highly unreliable. Send little data at slow speed if you want it to reach its goal.
 
-SIGUSR{1,2} seem to interrupt sleep, so it's not a good idea to transfer data to a sleeping process.
+C<SIGUSR{1,2}> seem to interrupt sleep, so it's not a good idea to transfer data to a sleeping process.
 
 =head1 DEPENDENCIES
 
-L<POSIX> (standard since perl 5) and L<Time::HiRes> (standard since perl 5.7.3) are required.
+L<Carp> (standard since perl 5), L<POSIX> (idem), L<Time::HiRes> (since perl 5.7.3) and L<utf8> (since perl 5.6) are required.
 
 =head1 SEE ALSO
 

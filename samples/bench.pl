@@ -73,17 +73,19 @@ SPEED:
 }
 
 tryspeed 4, 1;
-tryspeed 4, 5;
-tryspeed 4, 10;
-tryspeed 4, 50;
+tryspeed 4, 4;
+tryspeed 4, 16;
+tryspeed 4, 64;
+tryspeed 4, 256;
 tryspeed 16, 1;
-tryspeed 16, 5;
-tryspeed 16, 10;
+tryspeed 16, 4;
+tryspeed 16, 16;
+tryspeed 16, 64;
 tryspeed 64, 1;
-tryspeed 64, 5;
-tryspeed 64, 10;
+tryspeed 64, 4;
+tryspeed 64, 16;
 tryspeed 256, 1;
-tryspeed 256, 5;
+tryspeed 256, 4;
 tryspeed 1024, 1;
 
 print STDERR "=== Summary ===\n";

@@ -11,8 +11,7 @@ sub trysend {
  my $speed = 2 ** 16;
  my $ok = 0;
 SPEED:
- while (($speed > 1) && !$ok) {
-  $speed /= 2;
+ while ((($speed /= 2) >= 1) && !$ok) {
   my $pid = fork;
   if (!defined $pid) {
    die "$desc: fork() failed : $!";
