@@ -2,7 +2,7 @@ NAME
     IPC::MorseSignals - Communicate between processes with Morse signals.
 
 VERSION
-    Version 0.05
+    Version 0.06
 
 SYNOPSIS
         use IPC::MorseSignals qw/msend mrecv/;
@@ -11,8 +11,8 @@ SYNOPSIS
         if (!defined $pid) {
          die "fork() failed: $!";
         } elsif ($pid == 0) {
-         local @SIG{qw/USR1 USR2/} = mrecv sub {
-          print STDERR "received $_[0]!\n";
+         my $s = mrecv local %SIG, cb => sub {
+          print STDERR "received $_[1] from $_[0]!\n";
           exit
          };
          1 while 1;
@@ -29,45 +29,81 @@ DESCRIPTION
 
 FUNCTIONS
   "msend"
-        msend $msg, $pid [, speed => $speed, utf8 => $utf8 ]
+        msend $msg, $pid [, speed => $speed, utf8 => $utf8, sign => $sign ]
 
     Sends the string $msg to the process $pid (or to all the processes @$pid
-    if $pid is an array ref) at $speed bits per second. If the "utf8" flag
-    is set, the string will first be encoded in UTF-8. In this case, you
-    must turn it on for "mrecv" as well. Default speed is 512, don't set it
-    too low or the target will miss bits and the whole message will be
-    crippled. The "utf8" flag is turned off by default.
+    if $pid is an array ref) at $speed bits per second. Default speed is
+    512, don't set it too low or the target will miss bits and the whole
+    message will be crippled. If the "utf8" flag is set (default is unset),
+    the string will first be encoded in UTF-8. The "utf8" bit of the packet
+    message is turned on, so that the receiver is aware of it. If the "sign"
+    flag is unset (default is set), the PID of the sender won't be shipped
+    with the packet.
 
   "mrecv"
-        mrecv $callback [, utf => $utf8 ]
+        mrecv %SIG [, cb => $callback ]
 
-    Takes as its first argument the callback triggered when a complete
-    message is received, and returns two code references that should replace
-    "USR1" and "USR2" signal handlers. Basically, you want to use it like
-    this :
+    Takes as its first argument the %SIG hash and returns a hash reference
+    that represent the current state of the receiver. %SIG's fields 'USR1'
+    and 'USR2' will be replaced by the receiver's callbacks. "cb" specifies
+    the callback to trigger each time a complete message has arrived.
+    Basically, you want to use it like this :
 
-        local @SIG{qw/USR1 USR2/} = mrecv sub { ... };
+        my $rv = mrecv local %SIG, cb => sub { ... };
 
-    Turn on the utf8 flag if you know that the incoming strings are expected
-    to be in UTF-8. This flag is turned off by default.
+    In the callback, $_[0] is the sender's PID (or 0 if the sender wanted to
+    stay anonymous) and $_[1] is the message received.
+
+  "mreset"
+        mreset $rcv
+
+    Resets the state of the receiver $rcv. Useful to abort transfers.
+
+  "mbusy"
+        mbusy $rcv
+
+    Returns true if the receiver $rcv is currently busy with incoming data,
+    or false otherwise.
+
+  "mlastsender"
+        mlastmsg $rcv
+
+    Holds the PID of the last process that sent data to the receiver $rcv, 0
+    if that process was anonymous, or "undef" if no message has arrived yet.
+    It isn't cleared by "mreset".
+
+  "mlastmsg"
+        mlastmsg $rcv
+
+    Holds the last message received by $rcv, or "undef" if no message has
+    arrived yet. It isn't cleared by "mreset".
 
 EXPORT
-    This module exports on request its two only functions, "msend" and
-    "mrecv".
+    This module exports any of its functions only on request.
 
 PROTOCOL
     Each byte of the data string is converted into its bits sequence, with
     bits of highest weight coming first. All those bits sequences are put
-    into the same order as the characters occur in the string. The emitter
-    computes then the longuest sequence of successives 0 (say, m) and 1 (n).
-    A signature is then chosen :
+    into the same order as the characters occur in the string.
+
+    The header is composed by the "utf8" bit (if the data has to be decoded
+    to UTF-8), the "sign" bit (if sender gives its PID in the header), and
+    then 24 bits representing the sender's PID (with highest weight coming
+    first) if the "sign" bit is set.
+
+    The emitter computes then the longuest sequence of successives 0 (say,
+    m) and 1 (n) in the concatenation of the header and the data. A
+    signature is then chosen :
 
     - If m > n, we take n+1 times 1 follewed by one 0 ;
     - Otherwise, we take m+1 times 0 follewed by one 1.
 
-    The signal is then formed by concatenating the signature, the data bits
-    and the reversed signature (i.e. the bits of the signature in the
-    reverse order).
+    The signal is then formed by concatenating the signature, the header,
+    the data bits and the reversed signature (i.e. the bits of the signature
+    in the reverse order).
+
+        a ... a b | u s [ p23 ... p0 ] | ... data ... | b a ... a
+        signature |      header        |     data     | reversed signature
 
     The receiver knows that the signature has been sent when it has catched
     at least one 0 and one 1. The signal is completely transferred when it

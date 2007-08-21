@@ -1,5 +1,18 @@
 Revision history for IPC-MorseSignals
 
+0.06    2007-08-21 08:15 UTC
+        + Add : The protocol now carries the UTF-8 flag (hence you no longer
+                need to specify it to mrecv()) and the sender's PID (but you can
+                mask it).
+        + Add : New functions : mreset(), mlastmsg(), mlastsender().
+        + Chg : msend() accepts now the sign option, to specify is the sender
+                can put its PID into the message packet or not (default is yes).
+        + Chg : mrecv() now returns a hash reference that holds the receiver's
+                state. %SIG has to be passed as the first argument. The callback
+                is no longer mandatory and should be passed with the cb key. The
+                utf8 key was removed.
+        + Chg : The tests call fork() only one time.
+
 0.05    2007-08-18 16:50 UTC
         + Add : m{send,recv} will croak() if any of their arguments is invalid.
         + Chg : The requirements to pass the speed test were lowered.

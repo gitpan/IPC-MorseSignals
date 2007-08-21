@@ -1,15 +1,12 @@
-#!/usr/bin/perl -T
+#!perl -T
 
-use strict;
-use warnings;
+use Test::More tests => 10;
 
-use POSIX qw/SIGINT SIGTERM SIGKILL SIGHUP EXIT_FAILURE/;
-
-use lib qw{blib/lib};
+use POSIX qw/SIGINT SIGTERM SIGKILL SIGHUP EXIT_SUCCESS EXIT_FAILURE/;
 
 use IPC::MorseSignals qw/msend mrecv mreset/;
 
-my $lives = 100;
+my $lives = 10;
 
 sub spawn {
  --$lives;
@@ -20,18 +17,24 @@ sub spawn {
   die "fork() failed: $!";
  } elsif ($pid == 0) {
   close $rdr or die "close() failed: $!";
+  my $block = 0;
   my $s = mrecv local %SIG, cb => sub {
-   select $wtr; $| = 1;
-   print $wtr $_[1], "\n";
-   select $wtr; $| = 1;
+   if ($block) {
+    $block = 0;
+   } else {
+    select $wtr; $| = 1;
+    print $wtr $_[1], "\n";
+    select $wtr; $| = 1;
+   }
   };
-  $SIG{'HUP'} = sub { mreset $s };
+  $SIG{HUP} = sub { mreset $s };
+  $SIG{__WARN__} = sub { $block = 1; };
   1 while 1;
   exit EXIT_FAILURE;
  }
  close $wtr or die "close() failed: $!";
  return ($pid, $rdr);
-}  
+}
 
 sub slaughter {
  my ($pid) = @_;
@@ -39,36 +42,38 @@ sub slaughter {
  kill SIGTERM => $pid;
  kill SIGKILL => $pid;
  waitpid $pid, 0;
-}  
+}
 
 my @res;
 
 my ($pid, $rdr) = spawn;
 
-sub tryspeed {  
+sub tryspeed {
  my ($l, $n) = @_;
  my $speed = 2 ** 16;
  my $ok = 0;
  my @alpha = ('a' .. 'z');
  my $msg = join '', map { $alpha[rand @alpha] } 1 .. $l;
+ my $desc_base = "$l bytes sent $n times";
  while (($ok < $n) && (($speed /= 2) >= 1)) {
-  print STDERR "$n sends of $l bytes at $speed bits/s";
+  my $desc = "$desc_base at $speed bits/s";
+  diag("try $desc...");
 TRY:
   for (1 .. $n) {
-   print STDERR '.';
    my $r = '';
    eval {
-    local $SIG{ALRM} = sub { print STDERR "timeout\n"; die };
+    local $SIG{ALRM} = sub { die 'timeout' };
+    local $SIG{__WARN__} = sub { die 'do not want warnings' };
     my $a = (int(100 * (3 * $l) / $speed) || 1);
     $a = 10 if $a > 10;
     alarm $a;
+    kill SIGHUP => $pid;
     msend $msg => $pid, speed => $speed;
     $r = <$rdr>;
    };
    kill SIGHUP => $pid if $@;
    alarm 0;
    if (!defined $r) { # Something bad happened, respawn
-    print STDERR "oops\n";
     close $rdr or die "close() failed: $!";
     slaughter $pid;
     ($pid, $rdr) = spawn;
@@ -78,38 +83,32 @@ TRY:
     if ($r eq $msg) {
      ++$ok;
     } else {
-     print STDERR "transfer error\n";
      kill SIGHUP => $pid;
      last TRY;
     }
    }
   }
  }
- my $desc = "$l bytes sent $n times";
- if ($speed >= 1) {
-  print STDERR " OK\n\n";
-  push @res, "$desc at $speed bits/s";
- } else {
-  print STDERR " FAILED\n\n";
-  push @res, "$desc FAILED";
- }
+ ok($ok >= $n, $desc_base);
+ push @res, $desc_base . (($speed) ? ' at ' . $speed . ' bits/s' : ' failed');
 }
 
-tryspeed 4,    1;
-tryspeed 4,    4;
-tryspeed 4,    16;
-tryspeed 4,    64;
-tryspeed 4,    256;
-tryspeed 16,   1;
-tryspeed 16,   4;
-tryspeed 16,   16;
-tryspeed 16,   64;
-tryspeed 64,   1;
-tryspeed 64,   4;
-tryspeed 64,   16;
-tryspeed 256,  1;
-tryspeed 256,  4;
-tryspeed 1024, 1;
+tryspeed 4,   1;
+tryspeed 4,   4;
+tryspeed 4,   16;
+tryspeed 4,   64;
+tryspeed 16,  1;
+tryspeed 16,  4;
+tryspeed 16,  16;
+tryspeed 64,  1;
+tryspeed 64,  4;
+tryspeed 256, 1;
 
-print STDERR "=== Summary ===\n";
-print STDERR "$_\n" for @res;
+slaughter $pid;
+
+diag '=== Summary ===';
+diag $_ for sort {
+ my ($l1, $n1) = $a =~ /(\d+)\D+(\d+)/;
+ my ($l2, $n2) = $b =~ /(\d+)\D+(\d+)/;
+ $l1 <=> $l2 || $n1 <=> $n2
+} @res;

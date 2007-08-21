@@ -9,17 +9,19 @@ use Carp qw/croak/;
 use POSIX qw/SIGUSR1 SIGUSR2/;
 use Time::HiRes qw/usleep/;
 
+use constant PID_BITS => 24;
+
 =head1 NAME
 
 IPC::MorseSignals - Communicate between processes with Morse signals.
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 =head1 SYNOPSIS
 
@@ -29,8 +31,8 @@ our $VERSION = '0.05';
     if (!defined $pid) {
      die "fork() failed: $!";
     } elsif ($pid == 0) {
-     local @SIG{qw/USR1 USR2/} = mrecv sub {
-      print STDERR "received $_[0]!\n";
+     my $s = mrecv local %SIG, cb => sub {
+      print STDERR "received $_[1] from $_[0]!\n";
       exit
      };
      1 while 1;
@@ -48,29 +50,42 @@ But, seriously, use something else for your IPC. :)
 
 =head2 C<msend>
 
-    msend $msg, $pid [, speed => $speed, utf8 => $utf8 ]
+    msend $msg, $pid [, speed => $speed, utf8 => $utf8, sign => $sign ]
 
-Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if C<$pid> is an array ref) at C<$speed> bits per second. If the C<utf8> flag is set, the string will first be encoded in UTF-8. In this case, you must turn it on for L</mrecv> as well.
-Default speed is 512, don't set it too low or the target will miss bits and the whole message will be crippled. The C<utf8> flag is turned off by default.
+Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if C<$pid> is an array ref) at C<$speed> bits per second. Default speed is 512, don't set it too low or the target will miss bits and the whole message will be crippled.
+If the C<utf8> flag is set (default is unset), the string will first be encoded in UTF-8. The C<utf8> bit of the packet message is turned on, so that the receiver is aware of it. If the C<sign> flag is unset (default is set), the PID of the sender won't be shipped with the packet.
 
 =cut
 
 sub msend {
  my ($msg, $pid, @o) = @_;
- my @pid = (ref $pid eq 'ARRAY') ? @$pid : $pid;
+ my @pids = (ref $pid eq 'ARRAY') ? @$pid : $pid;
  return unless defined $msg && length $msg;
- croak 'No PID was supplied' unless @pid;
+ croak 'No PID was supplied' unless @pids;
  croak 'Optional arguments must be passed as key => value pairs' if @o % 2;
  my %opts = @o;
  $opts{speed} ||= 512;
  $opts{utf8}  ||= 0;
+ $opts{sign}    = 1 unless defined $opts{sign};
  my $delay = int(1_000_000 / $opts{speed});
+
+ my @head = (
+  ($opts{utf8} ? 1 : 0),
+  ($opts{sign} ? 1 : 0),
+ );
+ if ($opts{sign}) {
+  my $n = 2 ** PID_BITS;
+  push @head, ($$ & $n) ? 1 : 0 while ($n /= 2) >= 1;
+ }
+
  my $tpl = 'B*';
  if ($opts{utf8}) {
   utf8::encode $msg;
   $tpl = 'U0' . $tpl;
  }
  my @bits = split //, unpack $tpl, $msg;
+
+ unshift @bits, @head;
  my ($c, $n, @l) = (2, 0, 0, 0, 0);
  for (@bits) {
   if ($c == $_) {
@@ -85,80 +100,161 @@ sub msend {
  ($c, $n) = ($l[0] > $l[1]) ? (1, $l[1]) : (0, $l[0]); # Take the smallest
  ++$n;
  @bits = (($c) x $n, 1 - $c, @bits, 1 - $c, ($c) x $n);
+
  for (@bits) {
   my $sig = ($_ == 0) ? SIGUSR1 : SIGUSR2;
   usleep $delay;
-  kill $sig, @pid;
+  kill $sig => @pids;
  }
 }
 
 =head2 C<mrecv>
 
-    mrecv $callback [, utf => $utf8 ]
+    mrecv %SIG [, cb => $callback ]
 
-Takes as its first argument the callback triggered when a complete message is received, and returns two code references that should replace C<USR1> and C<USR2> signal handlers. Basically, you want to use it like this :
+Takes as its first argument the C<%SIG> hash and returns a hash reference that represent the current state of the receiver. C<%SIG>'s fields C<'USR1'> and C<'USR2'> will be replaced by the receiver's callbacks. C<cb> specifies the callback to trigger each time a complete message has arrived. Basically, you want to use it like this :
 
-    local @SIG{qw/USR1 USR2/} = mrecv sub { ... };
+    my $rv = mrecv local %SIG, cb => sub { ... };
 
-Turn on the utf8 flag if you know that the incoming strings are expected to be in UTF-8. This flag is turned off by default.
+In the callback, C<$_[0]> is the sender's PID (or C<0> if the sender wanted to stay anonymous) and C<$_[1]> is the message received.
 
 =cut
 
-sub mrecv {
- my ($cb, @o) = @_;
- croak 'No callback was specified' unless $cb;
+sub mreset;
+
+sub mrecv (\%@) {
+ my ($sig, @o) = @_;
  croak 'Optional arguments must be passed as key => value pairs' if @o % 2;
  my %opts = @o;
- $opts{utf8} ||= 0;
- my ($bits, $state, $c, $n, $end) = ('', 0, undef, 0, '');
+ my $s = { cb => $opts{cb} };
+ mreset $s;
+
  my $sighandler = sub {
   my ($b) = @_;
-  if ($state == 2) {
-   if (defined $bits && (substr $bits, -$n) eq $end) { # done
-    substr $bits, -$n, $n, '';
+
+  if ($s->{state} == 5) { # data
+
+   $s->{bits} .= $b;
+   if ((substr $s->{bits}, - $s->{n}) eq $s->{end}) {
+    substr $s->{bits}, - $s->{n}, $s->{n}, '';
     my $tpl = 'B*';
-    $tpl = 'U0' . $tpl if $opts{utf8};
-    my $msg = pack $tpl, $bits;
-    $cb->($msg);
+    $tpl = 'U0' . $tpl if $s->{utf8};
+    $s->{msg} = pack $tpl, $s->{bits};
+    mreset $s;
+    $s->{cb}->(@{$s}{qw/sender msg/}) if $s->{cb};
    }
-  } elsif ($state == 1) {
-   if ($c != $b) {
-    $state = 2;
-    $end = (1 - $c) . $c x $n;
-    $bits = '';
+
+  } elsif ($s->{state} == 4) { # sender signature
+
+   if (length $s->{bits} < PID_BITS) {
+    $s->{bits} .= $b;
+   } else {
+    my $n = 2 ** PID_BITS;
+    my @b = split //, $s->{bits};
+    $s->{sender} += $n * shift @b while ($n /= 2) >= 1;
+    @{$s}{qw/state bits/} = (5, $b);
    }
-   ++$n;
-  } else {
-   $c = $b;
-   $n = 1;
-   $state = 1;
+
+  } elsif ($s->{state} == 3) { # signature flag
+
+   @{$s}{qw/state sign/} = ($b ? 4 : 5, $b);
+
+  } elsif ($s->{state} == 2) { # utf8 flag
+
+   @{$s}{qw/state utf8/} = (3, $b);
+
+  } elsif ($s->{state} == 1) { # end of signature
+
+   if ($s->{c} != $b) {
+    @{$s}{qw/state end/} = (2, (1 - $s->{c}) . $s->{c} x $s->{n});
+   }
+   ++$s->{n};
+
+  } else { # first bit
+
+   @{$s}{qw/state c n sender msg/} = (1, $b, 1, 0, '');
+
   }
+
  };
- return sub {
-  $bits .= 0;
-  $sighandler->(0);
- }, sub {
-  $bits .= 1;
-  $sighandler->(1);
- };
+
+ @{$sig}{qw/USR1 USR2/} = (sub { $sighandler->(0) }, sub { $sighandler->(1) });
+
+ return $s;
+}
+
+=head2 C<mreset>
+
+    mreset $rcv
+
+Resets the state of the receiver C<$rcv>. Useful to abort transfers.
+
+=cut
+
+sub mreset {
+ my ($rcv) = @_;
+ @{$rcv}{qw/state c n bits end utf8 sign/} = (0, undef, 0, '', '', 0, 0);
+}
+
+=head2 C<mbusy>
+
+    mbusy $rcv
+
+Returns true if the receiver C<$rcv> is currently busy with incoming data, or false otherwise.
+
+=cut
+
+sub mbusy {
+ my ($rcv) = @_;
+ return $rcv->{state} > 0;
+}
+
+=head2 C<mlastsender>
+
+    mlastmsg $rcv
+
+Holds the PID of the last process that sent data to the receiver C<$rcv>, C<0> if that process was anonymous, or C<undef> if no message has arrived yet. It isn't cleared by L</mreset>.
+
+=cut
+
+sub mlastsender {
+ my ($rcv) = @_;
+ return $rcv->{sender};
+}
+
+=head2 C<mlastmsg>
+
+    mlastmsg $rcv
+
+Holds the last message received by C<$rcv>, or C<undef> if no message has arrived yet. It isn't cleared by L</mreset>.
+
+=cut
+
+sub mlastmsg {
+ my ($rcv) = @_;
+ return $rcv->{msg};
 }
 
 =head1 EXPORT
 
-This module exports on request its two only functions, L</msend> and L</mrecv>.
+This module exports any of its functions only on request.
 
 =cut
 
 use base qw/Exporter/;
 
 our @EXPORT         = ();
-our %EXPORT_TAGS    = ( 'funcs' => [ qw/msend mrecv/ ] );
+our %EXPORT_TAGS    = ( 'funcs' => [ qw/msend mrecv mreset mbusy mlastsender mlastmsg/ ] );
 our @EXPORT_OK      = map { @$_ } values %EXPORT_TAGS;
 $EXPORT_TAGS{'all'} = \@EXPORT_OK;
 
 =head1 PROTOCOL
 
-Each byte of the data string is converted into its bits sequence, with bits of highest weight coming first. All those bits sequences are put into the same order as the characters occur in the string. The emitter computes then the longuest sequence of successives 0 (say, m) and 1 (n). A signature is then chosen :
+Each byte of the data string is converted into its bits sequence, with bits of highest weight coming first. All those bits sequences are put into the same order as the characters occur in the string.
+
+The header is composed by the C<utf8> bit (if the data has to be decoded to UTF-8), the C<sign> bit (if sender gives its PID in the header), and then 24 bits representing the sender's PID (with highest weight coming first) if the C<sign> bit is set.
+
+The emitter computes then the longuest sequence of successives 0 (say, m) and 1 (n) in the concatenation of the header and the data. A signature is then chosen :
 
 =over 4
 
@@ -168,7 +264,10 @@ Each byte of the data string is converted into its bits sequence, with bits of h
 
 =back
 
-The signal is then formed by concatenating the signature, the data bits and the reversed signature (i.e. the bits of the signature in the reverse order).
+The signal is then formed by concatenating the signature, the header, the data bits and the reversed signature (i.e. the bits of the signature in the reverse order).
+
+    a ... a b | u s [ p23 ... p0 ] | ... data ... | b a ... a
+    signature |      header        |     data     | reversed signature
 
 The receiver knows that the signature has been sent when it has catched at least one 0 and one 1. The signal is completely transferred when it has received for the first time the whole reversed signature.
 
