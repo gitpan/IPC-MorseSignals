@@ -1,8 +1,11 @@
 #!perl -T
 
+use strict;
+use warnings;
+
 use Test::More tests => 2;
 
-use POSIX qw/SIGINT SIGTERM SIGKILL EXIT_SUCCESS EXIT_FAILURE WIFEXITED WEXITSTATUS/;
+use POSIX qw/SIGUSR1 SIGUSR2/;
 
 my ($a, $b) = (0, 0);
 

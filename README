@@ -2,7 +2,7 @@ NAME
     IPC::MorseSignals - Communicate between processes with Morse signals.
 
 VERSION
-    Version 0.06
+    Version 0.07
 
 SYNOPSIS
         use IPC::MorseSignals qw/msend mrecv/;
@@ -49,7 +49,7 @@ FUNCTIONS
     the callback to trigger each time a complete message has arrived.
     Basically, you want to use it like this :
 
-        my $rv = mrecv local %SIG, cb => sub { ... };
+        my $rcv = mrecv local %SIG, cb => sub { ... };
 
     In the callback, $_[0] is the sender's PID (or 0 if the sender wanted to
     stay anonymous) and $_[1] is the message received.
@@ -66,7 +66,7 @@ FUNCTIONS
     or false otherwise.
 
   "mlastsender"
-        mlastmsg $rcv
+        mlastsender $rcv
 
     Holds the PID of the last process that sent data to the receiver $rcv, 0
     if that process was anonymous, or "undef" if no message has arrived yet.

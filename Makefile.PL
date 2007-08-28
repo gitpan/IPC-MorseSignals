@@ -29,6 +29,7 @@ WriteMakefile(
     PL_FILES            => {},
     PREREQ_PM => {
         'Carp'        => 0,
+        'Exporter'    => 0,
         'POSIX'       => 0,
         'Test::More'  => 0,
         'Time::HiRes' => 0,

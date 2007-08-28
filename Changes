@@ -1,5 +1,10 @@
 Revision history for IPC-MorseSignals
 
+0.07    2007-08-28 11:30 UTC
+        + Chg : Common test code was factored into a module.
+        + Chg : Tests were lightened again.
+        + Doc : Typos in POD.
+
 0.06    2007-08-21 08:15 UTC
         + Add : The protocol now carries the UTF-8 flag (hence you no longer
                 need to specify it to mrecv()) and the sender's PID (but you can

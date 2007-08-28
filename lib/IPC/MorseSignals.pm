@@ -17,11 +17,11 @@ IPC::MorseSignals - Communicate between processes with Morse signals.
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =cut
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 =head1 SYNOPSIS
 
@@ -114,7 +114,7 @@ sub msend {
 
 Takes as its first argument the C<%SIG> hash and returns a hash reference that represent the current state of the receiver. C<%SIG>'s fields C<'USR1'> and C<'USR2'> will be replaced by the receiver's callbacks. C<cb> specifies the callback to trigger each time a complete message has arrived. Basically, you want to use it like this :
 
-    my $rv = mrecv local %SIG, cb => sub { ... };
+    my $rcv = mrecv local %SIG, cb => sub { ... };
 
 In the callback, C<$_[0]> is the sender's PID (or C<0> if the sender wanted to stay anonymous) and C<$_[1]> is the message received.
 
@@ -193,6 +193,7 @@ Resets the state of the receiver C<$rcv>. Useful to abort transfers.
 
 sub mreset {
  my ($rcv) = @_;
+ croak 'Invalid receiver' unless defined $rcv;
  @{$rcv}{qw/state c n bits end utf8 sign/} = (0, undef, 0, '', '', 0, 0);
 }
 
@@ -206,12 +207,13 @@ Returns true if the receiver C<$rcv> is currently busy with incoming data, or fa
 
 sub mbusy {
  my ($rcv) = @_;
+ croak 'Invalid receiver' unless defined $rcv;
  return $rcv->{state} > 0;
 }
 
 =head2 C<mlastsender>
 
-    mlastmsg $rcv
+    mlastsender $rcv
 
 Holds the PID of the last process that sent data to the receiver C<$rcv>, C<0> if that process was anonymous, or C<undef> if no message has arrived yet. It isn't cleared by L</mreset>.
 
@@ -219,6 +221,7 @@ Holds the PID of the last process that sent data to the receiver C<$rcv>, C<0> i
 
 sub mlastsender {
  my ($rcv) = @_;
+ croak 'Invalid receiver' unless defined $rcv;
  return $rcv->{sender};
 }
 
@@ -232,6 +235,7 @@ Holds the last message received by C<$rcv>, or C<undef> if no message has arrive
 
 sub mlastmsg {
  my ($rcv) = @_;
+ croak 'Invalid receiver' unless defined $rcv;
  return $rcv->{msg};
 }
 
