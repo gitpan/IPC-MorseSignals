@@ -6,6 +6,7 @@ use warnings;
 use utf8;
 
 use Carp qw/croak/;
+use Encode;
 use POSIX qw/SIGUSR1 SIGUSR2/;
 use Time::HiRes qw/usleep/;
 
@@ -17,11 +18,11 @@ IPC::MorseSignals - Communicate between processes with Morse signals.
 
 =head1 VERSION
 
-Version 0.07
+Version 0.08
 
 =cut
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 =head1 SYNOPSIS
 
@@ -50,10 +51,11 @@ But, seriously, use something else for your IPC. :)
 
 =head2 C<msend>
 
-    msend $msg, $pid [, speed => $speed, utf8 => $utf8, sign => $sign ]
+    msend $msg, $pid [, speed => $speed, sign => $sign ]
 
 Sends the string C<$msg> to the process C<$pid> (or to all the processes C<@$pid> if C<$pid> is an array ref) at C<$speed> bits per second. Default speed is 512, don't set it too low or the target will miss bits and the whole message will be crippled.
-If the C<utf8> flag is set (default is unset), the string will first be encoded in UTF-8. The C<utf8> bit of the packet message is turned on, so that the receiver is aware of it. If the C<sign> flag is unset (default is set), the PID of the sender won't be shipped with the packet.
+If the C<sign> flag is unset (default is set), the PID of the sender won't be shipped with the packet.
+UTF-8 encoded strings are automatically detected. The C<utf8> bit of the packet message is turned on, so that the receiver can encode them appropriately.
 
 =cut
 
@@ -65,27 +67,24 @@ sub msend {
  croak 'Optional arguments must be passed as key => value pairs' if @o % 2;
  my %opts = @o;
  $opts{speed} ||= 512;
- $opts{utf8}  ||= 0;
  $opts{sign}    = 1 unless defined $opts{sign};
+ $opts{utf8}    = Encode::is_utf8 $msg;
  my $delay = int(1_000_000 / $opts{speed});
 
- my @head = (
+ # Form the header
+ my @bits = (
   ($opts{utf8} ? 1 : 0),
   ($opts{sign} ? 1 : 0),
  );
  if ($opts{sign}) {
   my $n = 2 ** PID_BITS;
-  push @head, ($$ & $n) ? 1 : 0 while ($n /= 2) >= 1;
+  push @bits, ($$ & $n) ? 1 : 0 while ($n /= 2) >= 1;
  }
 
  my $tpl = 'B*';
- if ($opts{utf8}) {
-  utf8::encode $msg;
-  $tpl = 'U0' . $tpl;
- }
- my @bits = split //, unpack $tpl, $msg;
+ $tpl = 'U0' . $tpl if $opts{utf8};
+ push @bits, split //, unpack $tpl, $msg;
 
- unshift @bits, @head;
  my ($c, $n, @l) = (2, 0, 0, 0, 0);
  for (@bits) {
   if ($c == $_) {
@@ -141,6 +140,7 @@ sub mrecv (\%@) {
     $tpl = 'U0' . $tpl if $s->{utf8};
     $s->{msg} = pack $tpl, $s->{bits};
     mreset $s;
+#    Encode::_utf8_off $s->{msg} if !$s->{utf8}; # Workaround a bug in 5.8.x
     $s->{cb}->(@{$s}{qw/sender msg/}) if $s->{cb};
    }
 
@@ -262,9 +262,9 @@ The emitter computes then the longuest sequence of successives 0 (say, m) and 1 
 
 =over 4
 
-=item - If m > n, we take n+1 times 1 follewed by one 0 ;
+=item - If m > n, we take n+1 times 1 followed by one 0 ;
 
-=item - Otherwise, we take m+1 times 0 follewed by one 1.
+=item - Otherwise, we take m+1 times 0 followed by one 1.
 
 =back
 
@@ -283,7 +283,7 @@ C<SIGUSR{1,2}> seem to interrupt sleep, so it's not a good idea to transfer data
 
 =head1 DEPENDENCIES
 
-L<Carp> (standard since perl 5), L<POSIX> (idem), L<Time::HiRes> (since perl 5.7.3) and L<utf8> (since perl 5.6) are required.
+L<Carp> (standard since perl 5), L<POSIX> (idem), L<utf8> (since perl 5.6), L<Encode> (since perl 5.7.3) and L<Time::HiRes> (idem) are required.
 
 =head1 SEE ALSO
 

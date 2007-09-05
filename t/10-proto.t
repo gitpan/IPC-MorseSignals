@@ -8,9 +8,15 @@ use Test::More tests => 2;
 use lib 't/lib';
 use IPCMTest qw/try init cleanup/;
 
-init;
+sub test {
+ my ($desc, @args) = @_;
+ eval { ok(try(@args), $desc) };
+ fail($desc . " (died : $@)") if $@;
+}
 
-ok(try('x', 0), 'anonymous');
-ok(try('x', 1), 'signed');
+init 6;
+
+test 'anonymous' => 'x', 0;
+test 'signed'    => 'x', 1;
 
 cleanup;

@@ -8,11 +8,17 @@ use Test::More tests => 4;
 use lib 't/lib';
 use IPCMTest qw/try init cleanup/;
 
-init;
+sub test {
+ my ($desc, @args) = @_;
+ eval { ok(try(@args), $desc) };
+ fail($desc . " (died : $@)") if $@;
+}
 
-ok(try('hello'), 'ascii');
-ok(try("\0" x 5), 'few bits');
-ok(try("\x{FF}" x 5), 'lots of bits');
-ok(try("a\0b"), 'null character');
+init 12;
+
+test 'ascii'          => 'hello';
+test 'few bits'       => "\0" x 5;
+test 'lots of bits'   => "\x{FF}" x 5;
+test 'null character' => "a\0b";
 
 cleanup;

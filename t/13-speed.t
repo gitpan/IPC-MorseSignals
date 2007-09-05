@@ -11,7 +11,7 @@ use IPCMTest qw/speed init cleanup/;
 my $diag = sub { diag @_ };
 my @res;
 
-init;
+init 12;
 
 ok(speed(4,  1, $diag, \@res));
 ok(speed(4,  4, $diag, \@res));

@@ -1,5 +1,8 @@
 #!perl
 
+use strict;
+use warnings;
+
 use Test::More;
 
 eval { require Test::Kwalitee; Test::Kwalitee->import() };

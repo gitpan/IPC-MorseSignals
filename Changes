@@ -1,5 +1,13 @@
 Revision history for IPC-MorseSignals
 
+0.08    2007-09-05 09:40 UTC
+        + Chg : The sender detects now automatically if the message is encoded
+                in UTF-8, thanks to Encode::is_utf8. You no longer need to pass
+                the utf8 option to msend. The Encode module is a prerequisite.
+        + Chg : Tests that used to die now report correct failure.
+        + Fix : Tests are now strict.
+        + Fix : Miscount in t/13-speed.t
+
 0.07    2007-08-28 11:30 UTC
         + Chg : Common test code was factored into a module.
         + Chg : Tests were lightened again.

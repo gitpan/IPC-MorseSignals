@@ -2,7 +2,7 @@ NAME
     IPC::MorseSignals - Communicate between processes with Morse signals.
 
 VERSION
-    Version 0.07
+    Version 0.08
 
 SYNOPSIS
         use IPC::MorseSignals qw/msend mrecv/;
@@ -29,16 +29,15 @@ DESCRIPTION
 
 FUNCTIONS
   "msend"
-        msend $msg, $pid [, speed => $speed, utf8 => $utf8, sign => $sign ]
+        msend $msg, $pid [, speed => $speed, sign => $sign ]
 
     Sends the string $msg to the process $pid (or to all the processes @$pid
     if $pid is an array ref) at $speed bits per second. Default speed is
     512, don't set it too low or the target will miss bits and the whole
-    message will be crippled. If the "utf8" flag is set (default is unset),
-    the string will first be encoded in UTF-8. The "utf8" bit of the packet
-    message is turned on, so that the receiver is aware of it. If the "sign"
-    flag is unset (default is set), the PID of the sender won't be shipped
-    with the packet.
+    message will be crippled. If the "sign" flag is unset (default is set),
+    the PID of the sender won't be shipped with the packet. UTF-8 encoded
+    strings are automatically detected. The "utf8" bit of the packet message
+    is turned on, so that the receiver can encode them appropriately.
 
   "mrecv"
         mrecv %SIG [, cb => $callback ]
@@ -95,8 +94,8 @@ PROTOCOL
     m) and 1 (n) in the concatenation of the header and the data. A
     signature is then chosen :
 
-    - If m > n, we take n+1 times 1 follewed by one 0 ;
-    - Otherwise, we take m+1 times 0 follewed by one 1.
+    - If m > n, we take n+1 times 1 followed by one 0 ;
+    - Otherwise, we take m+1 times 0 followed by one 1.
 
     The signal is then formed by concatenating the signature, the header,
     the data bits and the reversed signature (i.e. the bits of the signature
@@ -117,8 +116,8 @@ CAVEATS
     transfer data to a sleeping process.
 
 DEPENDENCIES
-    Carp (standard since perl 5), POSIX (idem), Time::HiRes (since perl
-    5.7.3) and utf8 (since perl 5.6) are required.
+    Carp (standard since perl 5), POSIX (idem), utf8 (since perl 5.6),
+    Encode (since perl 5.7.3) and Time::HiRes (idem) are required.
 
 SEE ALSO
     perlipc for information about signals in perl.
