@@ -6,7 +6,7 @@ use warnings;
 use Test::More tests => 2;
 
 use lib 't/lib';
-use IPCMTest qw/try init cleanup/;
+use IPC::MorseSignals::TestSuite qw/try init cleanup/;
 
 sub test {
  my ($desc, @args) = @_;

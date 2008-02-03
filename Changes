@@ -1,5 +1,14 @@
 Revision history for IPC-MorseSignals
 
+0.09    2008-02-03 18:25 UTC
+        + Tst : Fix a race in child creation : the parent could send the message
+                before the child was ready to receive it.
+        + Tst : Turn autoflush on onto the reader end of the pipe.
+        + Tst : Renamed IPCMTest to IPC::MorseSignals::TestSuite
+        + Tst : Prefix author tests by 9*-.
+        + Tst : New optional author test : 95-portability-files.t, that uses
+                Test::Portability::Files when it's present.
+
 0.08    2007-09-05 09:40 UTC
         + Chg : The sender detects now automatically if the message is encoded
                 in UTF-8, thanks to Encode::is_utf8. You no longer need to pass

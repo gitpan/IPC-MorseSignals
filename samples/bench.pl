@@ -19,26 +19,39 @@ sub spawn {
  if (!defined $pid) {
   die "fork() failed: $!";
  } elsif ($pid == 0) {
+  local %SIG;
   close $rdr or die "close() failed: $!";
-  my $s = mrecv local %SIG, cb => sub {
-   select $wtr; $| = 1;
-   print $wtr $_[1], "\n";
-   select $wtr; $| = 1;
-  };
-  $SIG{'HUP'} = sub { mreset $s };
+  select $wtr;
+  $| = 1;
+  my $rcv = mrecv %SIG, cb => sub { print $wtr $_[1], "\n" };
+  my $ppid = getppid;
+  $SIG{ALRM} = sub { alarm 1; kill SIGHUP => $ppid };
+  alarm 1;
+  $SIG{HUP}  = sub { alarm 0; mreset $rcv };
   1 while 1;
   exit EXIT_FAILURE;
  }
+ my $ready = 0;
+ local $SIG{HUP} = sub { $ready = 1 };
+ sleep 1 until $ready;
  close $wtr or die "close() failed: $!";
+ my $oldfh = select $rdr;
+ $| = 1;
+ select $oldfh;
  return ($pid, $rdr);
 }  
 
 sub slaughter {
- my ($pid) = @_;
- kill SIGINT  => $pid;
- kill SIGTERM => $pid;
- kill SIGKILL => $pid;
- waitpid $pid, 0;
+ my ($pid, $rdr) = @_;
+ if (defined $rdr) {
+  close $rdr or die "close() failed: $!";
+ }
+ if (defined $pid) {
+  kill SIGINT  => $pid;
+  kill SIGTERM => $pid;
+  kill SIGKILL => $pid;
+  waitpid $pid, 0;
+ }
 }  
 
 my @res;
@@ -69,8 +82,7 @@ TRY:
    alarm 0;
    if (!defined $r) { # Something bad happened, respawn
     print STDERR "oops\n";
-    close $rdr or die "close() failed: $!";
-    slaughter $pid;
+    slaughter $pid, $rdr;
     ($pid, $rdr) = spawn;
     redo TRY;         # Retry this send
    } else {

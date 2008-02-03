@@ -13,8 +13,9 @@ t/10-proto.t
 t/11-ascii.t
 t/12-unicode.t
 t/13-speed.t
-t/boilerplate.t
-t/kwalitee.t
-t/pod-coverage.t
-t/pod.t
-t/lib/IPCMTest.pm
+t/90-boilerplate.t
+t/91-pod.t
+t/92-pod-coverage.t
+t/95-portability-files.t
+t/99-kwalitee.t
+t/lib/IPC/MorseSignals/TestSuite.pm

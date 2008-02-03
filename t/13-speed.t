@@ -6,7 +6,7 @@ use warnings;
 use Test::More tests => 3;
 
 use lib 't/lib';
-use IPCMTest qw/speed init cleanup/;
+use IPC::MorseSignals::TestSuite qw/speed init cleanup/;
 
 my $diag = sub { diag @_ };
 my @res;

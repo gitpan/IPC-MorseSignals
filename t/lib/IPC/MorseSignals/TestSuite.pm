@@ -1,4 +1,4 @@
-package IPCMTest;
+package IPC::MorseSignals::TestSuite;
 
 use strict;
 use warnings;
@@ -24,34 +24,50 @@ sub spawn {
  } elsif ($pid == 0) {
   local %SIG;
   close $rdr or die "close() failed: $!";
+  select $wtr;
+  $| = 1;
+  $SIG{__WARN__} = sub { print $wtr "!warn\n"; };
   my $rcv = mrecv %SIG, cb => sub {
-   binmode $wtr, ':utf8' if Encode::is_utf8 $_[1];
-   select $wtr; $| = 1;
+   my $is_utf8 = Encode::is_utf8($_[1]);
+   binmode $wtr, ':utf8' if $is_utf8;
    print $wtr $_[0], ':', $_[1], "\n";
-   select $wtr; $| = 1;
+   binmode $wtr, ':crlf' if $is_utf8;
   };
-  $SIG{HUP} = sub { mreset $rcv };
-  $SIG{__WARN__} = sub {
-   select $wtr; $| = 1;
-   print $wtr "__WARN__\n";
-   select $wtr; $| = 1;
-  };
+  my $ppid = getppid;
+  $SIG{ALRM} = sub { alarm 1; kill SIGHUP => $ppid };
+  alarm 1;
+  $SIG{HUP}  = sub { alarm 0; mreset $rcv }; # We can reset the alarm here.
   1 while 1;
   exit EXIT_FAILURE;
  }
+ my $ready = 0;
+ local $SIG{HUP} = sub { $ready = 1 };
+ sleep 1 until $ready;
  close $wtr or die "close() failed: $!";
+ my $oldfh = select $rdr;
+ $| = 1;
+ select $oldfh;
 }
 
 sub slaughter {
- kill SIGINT  => $pid;
- kill SIGTERM => $pid;
- kill SIGKILL => $pid;
- waitpid $pid, 0;
+ if (defined $rdr) {
+  close $rdr or die "close() falied: $!";
+  undef $rdr;
+ }
+ if (defined $pid) {
+  kill SIGINT  => $pid;
+  kill SIGTERM => $pid;
+  kill SIGKILL => $pid;
+  waitpid $pid, 0;
+  undef $pid;
+ }
 }
 
 sub init {
  ($lives) = @_;
  $lives ||= 10;
+ undef $pid;
+ undef $rdr;
  spawn;
 }
 
@@ -78,7 +94,6 @@ sub try {
    alarm 0;
   };
   if (!defined $r) { # Something bad happened, respawn
-   close $rdr or die "close() failed: $!";
    slaughter;
    spawn;
   } else {
@@ -99,7 +114,7 @@ sub speed {
  my $ok = 0;
  my @alpha = ('a' .. 'z');
  my $msg = join '', map { $alpha[rand @alpha] } 1 .. $l;
- my $desc_base = "$l bytes sent $n times";
+ my $desc_base = "$l bytes sent $n time" . ('s' x ($n != 1));
  while (($ok < $n) && (($speed /= 2) >= 1)) {
   $ok = 0;
   my $desc = "$desc_base at $speed bits/s";
@@ -119,7 +134,6 @@ TRY:
     alarm 0;
    };
    if (!defined $r) { # Something bad happened, respawn
-    close $rdr or die "close() failed: $!";
     slaughter;
     spawn;
     last TRY;
