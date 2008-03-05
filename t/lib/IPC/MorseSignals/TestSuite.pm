@@ -3,14 +3,17 @@ package IPC::MorseSignals::TestSuite;
 use strict;
 use warnings;
 
-use Encode;
-use POSIX qw/SIGINT SIGTERM SIGKILL SIGHUP EXIT_FAILURE/;
+use Data::Dumper;
+use POSIX qw/pause SIGINT SIGTERM SIGKILL SIGHUP EXIT_FAILURE/;
 
-use IPC::MorseSignals qw/msend mrecv mreset/;
+use IPC::MorseSignals::Emitter;
+use IPC::MorseSignals::Receiver;
 
 use base qw/Exporter/;
 
-our @EXPORT_OK = qw/try speed init cleanup/;
+our @EXPORT_OK = qw/try bench init cleanup/;
+
+$Data::Dumper::Indent = 0;
 
 my ($lives, $pid, $rdr);
 
@@ -27,17 +30,14 @@ sub spawn {
   select $wtr;
   $| = 1;
   $SIG{__WARN__} = sub { print $wtr "!warn\n"; };
-  my $rcv = mrecv %SIG, cb => sub {
-   my $is_utf8 = Encode::is_utf8($_[1]);
-   binmode $wtr, ':utf8' if $is_utf8;
-   print $wtr $_[0], ':', $_[1], "\n";
-   binmode $wtr, ':crlf' if $is_utf8;
+  my $rcv = new IPC::MorseSignals::Receiver \%SIG, done => sub {
+   print $wtr Dumper($_[1]), "\n";
   };
   my $ppid = getppid;
   $SIG{ALRM} = sub { alarm 1; kill SIGHUP => $ppid };
   alarm 1;
-  $SIG{HUP}  = sub { alarm 0; mreset $rcv }; # We can reset the alarm here.
-  1 while 1;
+  $SIG{HUP}  = sub { alarm 0; $rcv->reset }; # We can reset the alarm here.
+  pause while 1;
   exit EXIT_FAILURE;
  }
  my $ready = 0;
@@ -73,15 +73,17 @@ sub init {
 
 sub cleanup { slaughter }
 
+my $snd = new IPC::MorseSignals::Emitter;
+
 sub try {
- my ($msg, $sign) = @_;
- $sign ||= 0;
+ my ($msg) = @_;
  my $speed = 2 ** 16;
  my $ok = 0;
  my @ret;
- binmode $rdr, ((Encode::is_utf8 $msg) ? ':utf8' : ':crlf');
  while (!$ok && (($speed /= 2) >= 1)) {
   my $r = '';
+  my $dump = Dumper($msg);
+  1 while chomp $dump;
   eval {
    local $SIG{ALRM} = sub { die 'timeout' };
    local $SIG{__WARN__} = sub { alarm 0; die 'do not want warnings' };
@@ -89,7 +91,9 @@ sub try {
    $a = 10 if $a > 10;
    alarm $a;
    kill SIGHUP => $pid;
-   msend $msg => $pid, speed => $speed, sign => $sign;
+   $snd->post($msg);
+   $snd->speed($speed);
+   $snd->send($pid);
    $r = <$rdr>;
    alarm 0;
   };
@@ -97,8 +101,8 @@ sub try {
    slaughter;
    spawn;
   } else {
-   chomp $r;
-   if ($r eq ((($sign) ? $$ : 0) . ':' . $msg)) {
+   1 while chomp $r;
+   if ($r eq $dump) {
     $ok = 1;
    } else {
     kill SIGHUP => $pid;
@@ -108,12 +112,13 @@ sub try {
  return ($ok) ? $speed : 0;
 }
 
-sub speed {
+sub bench {
  my ($l, $n, $diag, $res) = @_;
  my $speed = 2 ** 16;
  my $ok = 0;
  my @alpha = ('a' .. 'z');
  my $msg = join '', map { $alpha[rand @alpha] } 1 .. $l;
+ my $dump = Dumper($msg);
  my $desc_base = "$l bytes sent $n time" . ('s' x ($n != 1));
  while (($ok < $n) && (($speed /= 2) >= 1)) {
   $ok = 0;
@@ -129,7 +134,9 @@ TRY:
     $a = 10 if $a > 10;
     alarm $a;
     kill SIGHUP => $pid;
-    msend $msg => $pid, speed => $speed, sign => 0;
+    $snd->post($msg);
+    $snd->speed($speed);
+    $snd->send($pid);
     $r = <$rdr>;
     alarm 0;
    };
@@ -138,8 +145,8 @@ TRY:
     spawn;
     last TRY;
    } else {
-    chomp $r;
-    if ($r eq '0:' . $msg) {
+    1 while chomp $r;
+    if ($r eq $dump) {
      ++$ok;
     } else {
      kill SIGHUP => $pid;

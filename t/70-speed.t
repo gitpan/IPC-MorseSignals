@@ -3,19 +3,21 @@
 use strict;
 use warnings;
 
+use utf8;
+
 use Test::More tests => 3;
 
 use lib 't/lib';
-use IPC::MorseSignals::TestSuite qw/speed init cleanup/;
+use IPC::MorseSignals::TestSuite qw/bench init cleanup/;
 
 my $diag = sub { diag @_ };
 my @res;
 
 init 12;
 
-ok(speed(4,  1, $diag, \@res));
-ok(speed(4,  4, $diag, \@res));
-ok(speed(16, 1, $diag, \@res));
+ok(bench(4,  1, $diag, \@res));
+ok(bench(4,  4, $diag, \@res));
+ok(bench(16, 1, $diag, \@res));
 
 cleanup;
 

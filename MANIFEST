@@ -1,21 +1,28 @@
 Changes
 MANIFEST
-META.yml # Will be created by "make dist"
 Makefile.PL
 README
 lib/IPC/MorseSignals.pm
+lib/IPC/MorseSignals/Emitter.pm
+lib/IPC/MorseSignals/Receiver.pm
 samples/bench.pl
-samples/tryityourself.pl
+samples/try.pl
 t/00-load.t
-t/01-import.t
-t/02-sigusr.t
-t/10-proto.t
-t/11-ascii.t
-t/12-unicode.t
-t/13-speed.t
+t/02-can.t
+t/10-sigusr.t
+t/20-emitter-obj.t
+t/30-receiver-obj.t
+t/50-self-plain.t
+t/51-self-utf8.t
+t/52-self-storable.t
+t/60-fork-plain.t
+t/61-fork-utf8.t
+t/62-fork-storable.t
+t/70-speed.t
 t/90-boilerplate.t
 t/91-pod.t
 t/92-pod-coverage.t
 t/95-portability-files.t
 t/99-kwalitee.t
 t/lib/IPC/MorseSignals/TestSuite.pm
+META.yml                                 Module meta-data (added by MakeMaker)

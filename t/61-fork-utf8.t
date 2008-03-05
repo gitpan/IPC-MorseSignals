@@ -3,7 +3,9 @@
 use strict;
 use warnings;
 
-use Test::More tests => 2;
+use utf8;
+
+use Test::More tests => 5;
 
 use lib 't/lib';
 use IPC::MorseSignals::TestSuite qw/try init cleanup/;
@@ -14,9 +16,11 @@ sub test {
  fail($desc . " (died : $@)") if $@;
 }
 
+my @msgs = qw/€éèë 月語 x tata たTÂ/;
+
 init 6;
 
-test 'anonymous' => 'x', 0;
-test 'signed'    => 'x', 1;
+test 'plain' => $_ for @msgs;
 
 cleanup;
+

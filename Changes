@@ -1,5 +1,8 @@
 Revision history for IPC-MorseSignals
 
+0.10    2008-03-05 16:35 UTC
+        IPC::MorseSignals now uses Bit::MorseSignals as backend. Major rewrite.
+
 0.09    2008-02-03 18:25 UTC
         + Tst : Fix a race in child creation : the parent could send the message
                 before the child was ready to receive it.
