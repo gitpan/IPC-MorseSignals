@@ -2,7 +2,7 @@ NAME
     IPC::MorseSignals - Communicate between processes with Morse signals.
 
 VERSION
-    Version 0.11
+    Version 0.12
 
 SYNOPSIS
         # In the sender process
@@ -22,14 +22,13 @@ SYNOPSIS
          print STDERR "GOT $_[1]\n";
         };
 
-    head1 DESCRIPTION
-
+DESCRIPTION
     This module implements a rare form of IPC by sending Morse-like signals
     through "SIGUSR1" and "SIGUSR2". Both of those signals are used, so you
     won't be able to keep them for something else when you use this module.
 
     IPC::MorseSignals::Emitter is a base class for emitters ;
-    IPC::MorseSignals::Receiver is a base class for receivers ;
+    IPC::MorseSignals::Receiver is a base class for receivers.
 
     But, seriously, use something else for your IPC. :)
 

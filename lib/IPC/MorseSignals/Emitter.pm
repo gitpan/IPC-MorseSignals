@@ -16,11 +16,11 @@ IPC::MorseSignals::Emitter - Base class for IPC::MorseSignals emitters.
 
 =head1 VERSION
 
-Version 0.11
+Version 0.12
 
 =cut
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 SYNOPSIS
 
@@ -32,7 +32,7 @@ our $VERSION = '0.11';
 
 =head1 DESCRIPTION
 
-This module sends messages processed by a L<Bit::MorseSignal> emitter to another process as C<SIGUSR1> (for bits 0) and C<SIGUSR2> (for 1) signals.
+This module sends messages processed by an underlying L<Bit::MorseSignal> emitter to another process as a sequence of C<SIGUSR1> (for bits 0) and C<SIGUSR2> (for 1) signals.
 
 =cut
 
@@ -78,13 +78,13 @@ sub send {
  return unless defined $dest;
  my @dests = grep $_ > 0, ref $dest eq 'ARRAY' ? map int, grep defined, @$dest
                                                : int $dest;
+ return unless @dests;
  while (defined(my $bit = $self->pop)) {
   my @sigs = (SIGUSR1, SIGUSR2);
   my $d = $self->{delay} * 1_000_000;
   $d -= usleep $d while $d > 0;
   kill $sigs[$bit] => @dests;
  }
- return unless @dests;
 }
 
 =head2 C<< delay < $seconds > >>

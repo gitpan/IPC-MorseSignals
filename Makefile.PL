@@ -4,8 +4,8 @@ use ExtUtils::MakeMaker;
 
 BEGIN {
  eval { require Config };
- die "You need the Config module to install this distribution, that's what happened" if $@;
- Config->import qw/%Config/;
+ die 'OS unsupported' if $@;
+ Config->import(qw/%Config/);
 }   
     
 my %sigs;
@@ -15,7 +15,7 @@ for (qw/USR1 USR2/) {
  print "Checking if you have SIG$_... ";
  unless (exists $sigs{$_}) {
   print "no\n";
-  die "Installation stops right here,";
+  die 'OS unsupported' if $@;
  }
  print "yes\n";
 }

@@ -14,11 +14,11 @@ IPC::MorseSignals::Receiver - Base class for IPC::MorseSignals receivers.
 
 =head1 VERSION
 
-Version 0.11
+Version 0.12
 
 =cut
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 SYNOPSIS
 
@@ -31,7 +31,7 @@ our $VERSION = '0.11';
 
 =head1 DESCRIPTION
 
-This module installs C<$SIG{qw/USR1 USR2/}> handlers and forwards the bits received to a L<Bit::MorseSignal> receiver.
+This module installs C<$SIG{qw/USR1 USR2/}> handlers and forwards the bits received to an underlying L<Bit::MorseSignals> receiver.
 
 =head1 METHODS
 

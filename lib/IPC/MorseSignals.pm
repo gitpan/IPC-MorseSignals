@@ -9,11 +9,11 @@ IPC::MorseSignals - Communicate between processes with Morse signals.
 
 =head1 VERSION
 
-Version 0.11
+Version 0.12
 
 =cut
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 SYNOPSIS
 
@@ -34,7 +34,7 @@ our $VERSION = '0.11';
      print STDERR "GOT $_[1]\n";
     };
 
-head1 DESCRIPTION
+=head1 DESCRIPTION
 
 This module implements a rare form of IPC by sending Morse-like signals through C<SIGUSR1> and C<SIGUSR2>. Both of those signals are used, so you won't be able to keep them for something else when you use this module.
 
@@ -42,7 +42,7 @@ This module implements a rare form of IPC by sending Morse-like signals through 
 
 =item L<IPC::MorseSignals::Emitter> is a base class for emitters ;
 
-=item L<IPC::MorseSignals::Receiver> is a base class for receivers ;
+=item L<IPC::MorseSignals::Receiver> is a base class for receivers.
 
 =back
 
