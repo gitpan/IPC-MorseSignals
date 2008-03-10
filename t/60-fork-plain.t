@@ -19,7 +19,9 @@ my @msgs = qw/hlagh hlaghlaghlagh HLAGH HLAGHLAGHLAGH \x{0dd0}\x{00}
 
 init 6;
 
-test 'plain' => $_ for @msgs;
+for (0 .. $#msgs) {
+ test 'plain ' . $_ => $msgs[$_];
+}
 
 cleanup;
 

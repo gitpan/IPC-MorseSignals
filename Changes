@@ -1,5 +1,15 @@
 Revision history for IPC-MorseSignals
 
+0.13    2008-03-10 15:25 UTC
+        + Chg : Build prerequisites are now completely separated from run-time
+                prerequisites.
+        + Doc : The usual set of POD typos.
+        + Tst : Changed SIGHUP handlers in the parent for SIGUSR1's.
+        + Tst : Changed SIGHUP handlers in the child for SIGTSTP's.
+        + Tst : Meaningful fork tests labels.
+        + Tst : More synchronization barriers.
+        + Tst : Safe kills.
+
 0.12    2008-03-09 10:20 UTC
         + Doc : POD tweaks.
         + Fix : Correct Makefile.PL die messages.

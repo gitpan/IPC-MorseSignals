@@ -20,7 +20,9 @@ my @msgs = qw/€éèë 月語 x tata たTÂ/;
 
 init 6;
 
-test 'plain' => $_ for @msgs;
+for (0 .. $#msgs) {
+ test 'utf8 ' . $_ => $msgs[$_];
+}
 
 cleanup;
 

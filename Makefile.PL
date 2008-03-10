@@ -22,6 +22,7 @@ for (qw/USR1 USR2/) {
 
 my $BUILD_REQUIRES = {
  'utf8'                => 0,
+ 'Config'              => 0,
  'Data::Dumper'        => 0,
  'Exporter'            => 0,
  'ExtUtils::MakeMaker' => 0,
@@ -51,7 +52,6 @@ WriteMakefile(
         'Carp'              => 0,
         'POSIX'             => 0,
         'Time::HiRes'       => 0,
-        %$BUILD_REQUIRES
     },
     dist                => {
         PREOP => 'pod2text lib/IPC/MorseSignals.pm > $(DISTVNAME)/README; '

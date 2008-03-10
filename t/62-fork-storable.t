@@ -26,7 +26,9 @@ $msgs[7]->{y} = $msgs[7];
 
 init 6;
 
-test 'plain' => $_ for @msgs;
+for (0 .. $#msgs) {
+ test 'storable ' . $_ => $msgs[$_];
+}
 
 cleanup;
 

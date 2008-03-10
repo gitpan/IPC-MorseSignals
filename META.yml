@@ -1,26 +1,22 @@
 --- #YAML:1.0
 name:                IPC-MorseSignals
-version:             0.12
+version:             0.13
 abstract:            Communicate between processes with Morse signals.
 license:             perl
 author:              
     - Vincent Pit <perl@profvince.com>
-generated_by:        ExtUtils::MakeMaker version 6.42
+generated_by:        ExtUtils::MakeMaker version 6.44
 distribution_type:   module
 requires:     
     Bit::MorseSignals:             0
     Carp:                          0
-    Data::Dumper:                  0
-    Exporter:                      0
-    ExtUtils::MakeMaker:           0
     POSIX:                         0
-    Test::More:                    0
     Time::HiRes:                   0
-    utf8:                          0
 meta-spec:
     url:     http://module-build.sourceforge.net/META-spec-v1.3.html
     version: 1.3
 build_requires:
+    Config:                        0
     Data::Dumper:                  0
     Exporter:                      0
     ExtUtils::MakeMaker:           0
