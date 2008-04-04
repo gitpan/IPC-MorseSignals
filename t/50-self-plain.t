@@ -14,7 +14,7 @@ my @msgs = qw/hlagh hlaghlaghlagh HLAGH HLAGHLAGHLAGH \x{0dd0}\x{00}
 my $deuce = new IPC::MorseSignals::Emitter speed => 1024;
 my $pants = new IPC::MorseSignals::Receiver \%SIG, done => sub {
  my $cur = shift @msgs;
- ok($_[1] eq $cur, 'got ' . $_[1] . ', received ' . $cur)
+ is($_[1], $cur, "message correctly received");
 };
 
 $deuce->post($_) for @msgs;

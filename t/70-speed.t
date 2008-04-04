@@ -5,19 +5,22 @@ use warnings;
 
 use utf8;
 
-use Test::More tests => 3;
+my $n;
+use Test::More tests => 1 + ($n = 5);
 
 use lib 't/lib';
 use IPC::MorseSignals::TestSuite qw/bench init cleanup/;
 
-my $diag = sub { diag @_ };
+*IPC::MorseSignals::TestSuite::diag = *Test::More::diag;
+
 my @res;
 
-init 12;
+init 2 * $n;
 
-ok(bench(4,  1, $diag, \@res));
-ok(bench(4,  4, $diag, \@res));
-ok(bench(16, 1, $diag, \@res));
+TODO: {
+ local $TODO = 'This is just to give you a measure of which speed you should use';
+ ok(bench(2 ** ($n - $_),  2 ** $_, \@res)) for 0 .. $n;
+}
 
 cleanup;
 

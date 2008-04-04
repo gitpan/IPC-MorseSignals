@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use POSIX qw/pause SIGUSR1 SIGTSTP SIGKILL EXIT_FAILURE/;
+use POSIX qw/pause SIGKILL EXIT_FAILURE/;
 
 use IPC::MorseSignals::Emitter;
 use IPC::MorseSignals::Receiver;
@@ -17,8 +17,10 @@ $Data::Dumper::Indent = 0;
 
 my ($lives, $pid, $rdr);
 
-my $ready = 0;
-$SIG{USR1} = sub { $ready = 1 };
+sub slaughter;
+local $SIG{INT} = sub { slaughter };
+
+sub diag { warn "# @_" }
 
 sub spawn {
  --$lives;
@@ -32,22 +34,17 @@ sub spawn {
   close $rdr or die "close() failed: $!";
   select $wtr;
   $| = 1;
-  my $ppid = getppid;
   my $rcv = new IPC::MorseSignals::Receiver \%SIG, done => sub {
-   print $wtr Dumper($_[1]), "\n";
-   kill SIGUSR1 => $ppid if $ppid;
+   my $msg = Dumper($_[1]);
+   $msg =~ s/\n\r/ /g;
+   print $wtr "$msg\n";
   };
   $SIG{__WARN__} = sub {
    my $warn = join '', @_;
    $warn =~ s/\n\r/ /g;
-   print $wtr "!warn : $warn\n";
-   kill SIGUSR1 => $ppid if $ppid;
+   print $wtr "!warn:$warn\n";
   };
-  $SIG{TSTP} = sub {
-   $rcv->reset;
-   kill SIGUSR1 => $ppid if $ppid;
-  };
-  print $wtr "ok\n";
+  print $wtr "!ok\n";
   pause while 1;
   exit EXIT_FAILURE;
  }
@@ -65,9 +62,18 @@ sub slaughter {
  }
  if ($pid) {
   kill SIGKILL => $pid;
-  waitpid $pid, 0;
+  my $kid;
+  do {
+   $kid = waitpid $pid, 0;
+  } while ($kid != $pid && $kid != -1);
   undef $pid;
  }
+}
+
+sub respawn {
+ diag "respawn ($lives lives left)";
+ slaughter;
+ spawn;
 }
 
 sub init {
@@ -84,89 +90,75 @@ my $snd = new IPC::MorseSignals::Emitter;
 
 sub try {
  my ($msg) = @_;
- my $speed = 2 ** 16;
- my $ok = 0;
- my @ret;
- while (!$ok && (($speed /= 2) >= 1)) {
+ my $speed = 2 ** 10;
+ my $dump = Dumper($msg);
+ 1 while chomp $dump;
+ $dump =~ s/\n\r/ /g; 
+ $snd->reset;
+ my $len = 0;
+ while (($speed /= 2) >= 1) {
+  $snd->post($msg);
+  $len = $snd->len;
+  my $a = 1 + (int($len / $speed) || 1);
+  last unless $a <= 20;
+  $snd->speed($speed);
   my $r = '';
-  my $dump = Dumper($msg);
-  1 while chomp $dump;
   eval {
    local $SIG{ALRM} = sub { die 'timeout' };
-   local $SIG{__WARN__} = sub { alarm 0; die 'do not want warnings' };
-   my $a = (int(100 * (3 * length $msg) / $speed) || 1);
-   $a = 10 if $a > 10;
+   local $SIG{__WARN__} = sub { $a = alarm 0; die 'do not want warnings' };
    alarm $a;
-   $snd->post($msg);
-   $snd->speed($speed);
-   $ready = 0;
    $snd->send($pid);
-   pause until $ready;
    $r = <$rdr>;
-   alarm 0;
+   $a = alarm 0;
   };
-  if (!defined $r) { # Something bad happened, respawn
-   slaughter;
-   spawn;
-  } else {
+  if (defined $r) {
    1 while chomp $r;
-   if ($r eq $dump) {
-    $ok = 1;
-   } else {
-    warn $1 if $r =~ /^warn\s*:\s*(.*)/;
-    $ready = 0;
-    kill SIGTSTP => $pid if $pid;
-    pause until $ready;
-   }
+   return 1, $speed, $len if $r eq $dump;
   }
+  $snd->reset;
+  respawn;
  }
- return ($ok) ? $speed : 0;
+ return 0, $speed, $len;
 }
 
 sub bench {
- my ($l, $n, $diag, $res) = @_;
+ my ($l, $n, $res) = @_;
  my $speed = 2 ** 16;
  my $ok = 0;
  my @alpha = ('a' .. 'z');
  my $msg = join '', map { $alpha[rand @alpha] } 1 .. $l;
  my $dump = Dumper($msg);
+ 1 while chomp $dump;
+ $dump =~ s/\n\r/ /g;
  my $desc_base = "$l bytes sent $n time" . ('s' x ($n != 1));
  while (($ok < $n) && (($speed /= 2) >= 1)) {
   $ok = 0;
   my $desc = "$desc_base at $speed bits/s";
-  $diag->("try $desc...");
+  diag "try $desc...";
 TRY:
   for (1 .. $n) {
+   $snd->post($msg);
+   my $a = 1 + (int($snd->len / $speed) || 1);
+   $snd->speed($speed);
    my $r = '';
    eval {
     local $SIG{ALRM} = sub { die 'timeout' };
     local $SIG{__WARN__} = sub { alarm 0; die 'do not want warnings' };
-    my $a = (int(100 * (3 * $l) / $speed) || 1);
-    $a = 10 if $a > 10;
     alarm $a;
-    $snd->post($msg);
-    $snd->speed($speed);
-    $ready = 0;
     $snd->send($pid);
-    pause until $ready;
     $r = <$rdr>;
     alarm 0;
    };
-   if (!defined $r) { # Something bad happened, respawn
-    slaughter;
-    spawn;
-    last TRY;
-   } else {
+   if (defined $r) {
     1 while chomp $r;
     if ($r eq $dump) {
      ++$ok;
-    } else {
-     $ready = 0;
-     kill SIGTSTP => $pid if $pid;
-     pause until $ready;
-     last TRY;
+     next TRY;
     }
    }
+   $snd->reset;
+   respawn;
+   last TRY;
   }
  }
  push @$res, $desc_base . (($speed) ? ' at ' . $speed . ' bits/s' : ' failed');

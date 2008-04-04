@@ -2,7 +2,7 @@ NAME
     IPC::MorseSignals - Communicate between processes with Morse signals.
 
 VERSION
-    Version 0.13
+    Version 0.15
 
 SYNOPSIS
         # In the sender process

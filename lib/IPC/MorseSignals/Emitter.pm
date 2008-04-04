@@ -16,11 +16,11 @@ IPC::MorseSignals::Emitter - Base class for IPC::MorseSignals emitters.
 
 =head1 VERSION
 
-Version 0.13
+Version 0.15
 
 =cut
 
-our $VERSION = '0.13';
+our $VERSION = '0.15';
 
 =head1 SYNOPSIS
 
@@ -45,7 +45,7 @@ sub _check_self {
 
 =head2 C<< new < delay => $seconds, speed => $bauds, %bme_options > >>
 
-Creates a new emitter object. C<delay> specifies the delay between two sends, in seconds, while C<speed> is the number of bits sent per second. The delay value has priority over the speed. Extra arguments are passed to L<Bit::MorseSignals::Emitter/new>.
+Creates a new emitter object. C<delay> specifies the delay between two sends, in seconds, while C<speed> is the number of bits sent per second. The delay value has priority over the speed. Default delay is 1 second. Extra arguments are passed to L<Bit::MorseSignals::Emitter/new>.
 
 =cut
 
@@ -68,7 +68,7 @@ sub new {
 
 =head2 C<send $pid>
 
-Sends messages enqueued with L<Bit::MorseSignals::Emitter/post> to the process C<$pid> (or to all the C<@$pid> if C<$pid> is an array reference).
+Sends messages enqueued with L<Bit::MorseSignals::Emitter/post> to the process C<$pid> (or to all the C<@$pid> if C<$pid> is an array reference, in which case duplicated targets are stripped off).
 
 =cut
 
@@ -76,8 +76,10 @@ sub send {
  my ($self, $dest) = @_;
  _check_self($self);
  return unless defined $dest;
- my @dests = grep $_ > 0, ref $dest eq 'ARRAY' ? map int, grep defined, @$dest
-                                               : int $dest;
+ my %count;
+ my @dests = grep $_ > 0 && !$count{$_}++, # Remove duplicates.
+              ref $dest eq 'ARRAY' ? map int, grep defined, @$dest
+                                   : int $dest;
  return unless @dests;
  while (defined(my $bit = $self->pop)) {
   my @sigs = (SIGUSR1, SIGUSR2);

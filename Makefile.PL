@@ -15,7 +15,7 @@ for (qw/USR1 USR2/) {
  print "Checking if you have SIG$_... ";
  unless (exists $sigs{$_}) {
   print "no\n";
-  die 'OS unsupported' if $@;
+  die 'OS unsupported';
  }
  print "yes\n";
 }
@@ -41,22 +41,22 @@ sub build_req {
 }
 
 WriteMakefile(
-    NAME                => 'IPC::MorseSignals',
-    AUTHOR              => 'Vincent Pit <perl@profvince.com>',
-    LICENSE             => 'perl',
-    VERSION_FROM        => 'lib/IPC/MorseSignals.pm',
-    ABSTRACT_FROM       => 'lib/IPC/MorseSignals.pm',
-    PL_FILES            => {},
-    PREREQ_PM => {
-        'Bit::MorseSignals' => 0,
+    NAME          => 'IPC::MorseSignals',
+    AUTHOR        => 'Vincent Pit <perl@profvince.com>',
+    LICENSE       => 'perl',
+    VERSION_FROM  => 'lib/IPC/MorseSignals.pm',
+    ABSTRACT_FROM => 'lib/IPC/MorseSignals.pm',
+    PL_FILES      => {},
+    PREREQ_PM     => {
+        'Bit::MorseSignals' => 0.05,
         'Carp'              => 0,
         'POSIX'             => 0,
         'Time::HiRes'       => 0,
     },
-    dist                => {
-        PREOP => 'pod2text lib/IPC/MorseSignals.pm > $(DISTVNAME)/README; '
-                 . build_req,
-        COMPRESS => 'gzip -9f', SUFFIX => 'gz',
+    dist          => {
+        PREOP      => 'pod2text lib/IPC/MorseSignals.pm > $(DISTVNAME)/README; '
+                      . build_req,
+        COMPRESS   => 'gzip -9f', SUFFIX => 'gz',
     },
-    clean               => { FILES => 'IPC-MorseSignals-*' },
+    clean         => { FILES => 'IPC-MorseSignals-* *.gcov *.gcda *.gcno cover_db' },
 );

@@ -1,5 +1,21 @@
 Revision history for IPC-MorseSignals
 
+0.15    2008-04-05 00:00 UTC
+        + Fix : Correct die error when SIGUSR{1,2} aren't found.
+        + Fix : Strip off duplicated targets when sending to multiple processes
+                at the same time.
+        + Tst : Lower base speed to 1024 bauds when forking.
+        + Tst : Don't reset the receiver state anymore, but always respawn.
+        + Tst : t/70-speed.t tests are now marked as TODO, so that they won't
+                block module installation.
+        + Tst : Timeouts aren't truncated to 10 seconds anymore. This used to
+                result into physically logical failures. On the other hand, if
+                the required timeout now goes over 20 seconds, the test is
+                considered failed.
+
+0.14
+        Phantom version, maybe released through CPAN for a short amount of time.
+
 0.13    2008-03-10 15:25 UTC
         + Chg : Build prerequisites are now completely separated from run-time
                 prerequisites.
