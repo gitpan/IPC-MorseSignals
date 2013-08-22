@@ -9,18 +9,18 @@ IPC::MorseSignals - Communicate between processes with Morse signals.
 
 =head1 VERSION
 
-Version 0.15
+Version 0.16
 
 =cut
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 =head1 SYNOPSIS
 
     # In the sender process
     use IPC::MorseSignals::Emitter;
 
-    my $deuce = new IPC::MorseSignals::Emitter speed => 1024;
+    my $deuce = IPC::MorseSignals::Emitter->new(speed => 1024);
     $deuce->post('HLAGH') for 1 .. 3;
     $deuce->send($pid);
 
@@ -30,9 +30,9 @@ our $VERSION = '0.15';
     use IPC::MorseSignals::Receiver;
 
     local %SIG;
-    my $pants = new IPC::MorseSignals::Receiver \%SIG, done => sub {
+    my $pants = IPC::MorseSignals::Receiver->new(\%SIG, done => sub {
      print STDERR "GOT $_[1]\n";
-    };
+    });
 
 =head1 DESCRIPTION
 
@@ -47,6 +47,11 @@ This module implements a rare form of IPC by sending Morse-like signals through 
 =back
 
 But, seriously, use something else for your IPC. :)
+
+=head1 CAVEATS
+
+When the same signal is sent several times in a row to a process, the POSIX standard does not guarantee that the relevant signal handler will be called for each of the notifications.
+This will result in malformed messages if the transfer speed is so high that the operating system does not have the time to call the signal handler for each bit.
 
 =head1 DEPENDENCIES
 
@@ -68,7 +73,7 @@ For truly useful IPC, search for shared memory, pipes and semaphores.
 
 Vincent Pit, C<< <perl at profvince.com> >>, L<http://www.profvince.com>.
 
-You can contact me by mail or on #perl @ FreeNode (vincent or Prof_Vince).
+You can contact me by mail or on C<irc.perl.org> (vincent).
 
 =head1 BUGS
 
@@ -86,7 +91,7 @@ Thanks for the inspiration, mofino ! I hope this module will fill all your IPC n
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2007-2008 Vincent Pit, all rights reserved.
+Copyright 2007,2008,2013 Vincent Pit, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

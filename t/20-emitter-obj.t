@@ -9,7 +9,7 @@ use IPC::MorseSignals::Emitter;
 
 sub neq { abs($_[0] - $_[1]) < ($_[1] / 10) };
 
-my $deuce = new IPC::MorseSignals::Emitter;
+my $deuce = IPC::MorseSignals::Emitter->new;
 ok(defined $deuce, 'BME object is defined');
 is(ref $deuce, 'IPC::MorseSignals::Emitter', 'IME object is valid');
 ok($deuce->isa('Bit::MorseSignals::Emitter'), 'IME is a BME');
@@ -32,22 +32,22 @@ $deuce->speed(100);
 is($deuce->speed, 100, 'set speed is 100');
 ok(neq($deuce->delay, 0.01), 'resulting speed is 0.01');
 
-$deuce = new IPC::MorseSignals::Emitter delay => 0.25;
+$deuce = IPC::MorseSignals::Emitter->new(delay => 0.25);
 ok(neq($deuce->delay, 0.25), 'initial delay is 0.25');
 is($deuce->speed, 4, 'resulting initial speed is 4');
 
-$deuce = new IPC::MorseSignals::Emitter speed => 40;
+$deuce = IPC::MorseSignals::Emitter->new(speed => 40);
 is($deuce->speed, 40, 'initial speed is 40');
 ok(neq($deuce->delay, 0.025), 'resulting initial delay is 0.025');
 
-$deuce = new IPC::MorseSignals::Emitter delay => 0.25, speed => 40;
+$deuce = IPC::MorseSignals::Emitter->new(delay => 0.25, speed => 40);
 ok(neq($deuce->delay, 0.25), 'delay supersedes speed');
 
-$deuce = new IPC::MorseSignals::Emitter delay => 0;
+$deuce = IPC::MorseSignals::Emitter->new(delay => 0);
 is($deuce->delay, 1, 'wrong delay results in 1');
 
-$deuce = new IPC::MorseSignals::Emitter speed => 0.1;
+$deuce = IPC::MorseSignals::Emitter->new(speed => 0.1);
 is($deuce->delay, 1, 'wrong speed results in 1');
 
-$deuce = new IPC::MorseSignals::Emitter delay => 0, speed => -0.1;
+$deuce = IPC::MorseSignals::Emitter->new(delay => 0, speed => -0.1);
 is($deuce->delay, 1, 'wrong delay and speed result in 1');

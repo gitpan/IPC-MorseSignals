@@ -7,7 +7,7 @@ use Test::More tests => 4;
 
 use IPC::MorseSignals::Receiver;
 
-my $pants = new IPC::MorseSignals::Receiver \%SIG;
+my $pants = IPC::MorseSignals::Receiver->new(\%SIG);
 ok(defined $pants, 'IMR object is defined');
 is(ref $pants, 'IPC::MorseSignals::Receiver', 'IMR object is valid');
 ok($pants->isa('Bit::MorseSignals::Receiver'), 'IMR is a BMR');

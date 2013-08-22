@@ -1,5 +1,12 @@
 Revision history for IPC-MorseSignals
 
+0.16    2013-08-22 20:35 UTC
+        This is a maintenance release. The code contains no functional change.
+        Satisfied users of version 0.15 can skip this update.
+        + Upd : Package metadata overhaul.
+        + Tst : Author tests are no longer bundled with this distribution.
+                They are only made available to authors in the git repository.
+
 0.15    2008-04-05 00:00 UTC
         + Fix : Correct die error when SIGUSR{1,2} aren't found.
         + Fix : Strip off duplicated targets when sending to multiple processes

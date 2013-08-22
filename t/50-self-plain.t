@@ -11,11 +11,11 @@ use IPC::MorseSignals::Receiver;
 my @msgs = qw/hlagh hlaghlaghlagh HLAGH HLAGHLAGHLAGH \x{0dd0}\x{00}
               h\x{00}la\x{00}gh \x{00}\x{ff}\x{ff}\x{00}\x{00}\x{ff}/;
 
-my $deuce = new IPC::MorseSignals::Emitter speed => 1024;
-my $pants = new IPC::MorseSignals::Receiver \%SIG, done => sub {
+my $deuce = IPC::MorseSignals::Emitter->new(speed => 1024);
+my $pants = IPC::MorseSignals::Receiver->new(\%SIG, done => sub {
  my $cur = shift @msgs;
  is($_[1], $cur, "message correctly received");
-};
+});
 
 $deuce->post($_) for @msgs;
 $deuce->send($$);

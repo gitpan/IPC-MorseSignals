@@ -34,11 +34,11 @@ sub spawn {
   close $rdr or die "close() failed: $!";
   select $wtr;
   $| = 1;
-  my $rcv = new IPC::MorseSignals::Receiver \%SIG, done => sub {
+  my $rcv = IPC::MorseSignals::Receiver->new(\%SIG, done => sub {
    my $msg = Dumper($_[1]);
    $msg =~ s/\n\r/ /g;
    print $wtr "$msg\n";
-  };
+  });
   $SIG{__WARN__} = sub {
    my $warn = join '', @_;
    $warn =~ s/\n\r/ /g;
@@ -86,7 +86,7 @@ sub init {
 
 sub cleanup { slaughter }
 
-my $snd = new IPC::MorseSignals::Emitter;
+my $snd = IPC::MorseSignals::Emitter->new;
 
 sub try {
  my ($msg) = @_;

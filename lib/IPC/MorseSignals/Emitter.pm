@@ -16,17 +16,17 @@ IPC::MorseSignals::Emitter - Base class for IPC::MorseSignals emitters.
 
 =head1 VERSION
 
-Version 0.15
+Version 0.16
 
 =cut
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 =head1 SYNOPSIS
 
     use IPC::MorseSignals::Emitter;
 
-    my $deuce = new IPC::MorseSignals::Emitter speed => 1024;
+    my $deuce = IPC::MorseSignals::Emitter->new(speed => 1024);
     $deuce->post('HLAGH') for 1 .. 3;
     $deuce->send($pid);
 
@@ -143,7 +143,7 @@ For truly useful IPC, search for shared memory, pipes and semaphores.
 
 Vincent Pit, C<< <perl at profvince.com> >>, L<http://www.profvince.com>.
 
-You can contact me by mail or on #perl @ FreeNode (vincent or Prof_Vince).
+You can contact me by mail or on C<irc.perl.org> (vincent).
 
 =head1 BUGS
 
@@ -157,7 +157,7 @@ You can find documentation for this module with the perldoc command.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2007-2008 Vincent Pit, all rights reserved.
+Copyright 2007,2008,2013 Vincent Pit, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

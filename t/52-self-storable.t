@@ -19,11 +19,11 @@ my @msgs = (
 $msgs[7]->{wut} = { dong => [ 0 .. 9 ], recurse => $msgs[7] };
 my $i = 0;
 
-my $deuce = new IPC::MorseSignals::Emitter speed => 1024;
-my $pants = new IPC::MorseSignals::Receiver \%SIG, done => sub {
+my $deuce = IPC::MorseSignals::Emitter->new(speed => 1024);
+my $pants = IPC::MorseSignals::Receiver->new(\%SIG, done => sub {
  my $cur = shift @msgs;
  is_deeply($_[1], $cur, 'got object ' . $i++);
-};
+});
 
 $deuce->post($_) for @msgs;
 $deuce->send($$);

@@ -6,11 +6,11 @@ BEGIN {
  eval { require Config };
  die 'OS unsupported' if $@;
  Config->import(qw/%Config/);
-}   
-    
+}
+
 my %sigs;
 @sigs{split ' ', $Config{sig_name}} = ();
-    
+
 for (qw/USR1 USR2/) {
  print "Checking if you have SIG$_... ";
  unless (exists $sigs{$_}) {
@@ -20,43 +20,60 @@ for (qw/USR1 USR2/) {
  print "yes\n";
 }
 
-my $BUILD_REQUIRES = {
- 'utf8'                => 0,
- 'Config'              => 0,
- 'Data::Dumper'        => 0,
- 'Exporter'            => 0,
- 'ExtUtils::MakeMaker' => 0,
- 'POSIX'               => 0,
- 'Test::More'          => 0,
-};
+my $dist = 'IPC-MorseSignals';
 
-sub build_req {
- my $tometa = ' >> $(DISTVNAME)/META.yml;';
- my $build_req = 'echo "build_requires:" ' . $tometa;
- foreach my $mod ( sort { lc $a cmp lc $b } keys %$BUILD_REQUIRES ) {
-  my $ver = $BUILD_REQUIRES->{$mod};
-  $build_req .= sprintf 'echo "    %-30s %s" %s', "$mod:", $ver, $tometa;
- }
- return $build_req;
-}
+(my $name = $dist) =~ s{-}{::}g;
+
+(my $file = $dist) =~ s{-}{/}g;
+$file = "lib/$file.pm";
+
+my %PREREQ_PM = (
+ 'Bit::MorseSignals' => 0.05,
+ 'Carp'              => 0,
+ 'POSIX'             => 0,
+ 'Time::HiRes'       => 0,
+ 'base'              => 0,
+);
+
+my %META = (
+ configure_requires => {
+  'Config'              => 0,
+  'ExtUtils::MakeMaker' => 0,
+ },
+ build_requires => {
+  'utf8'                => 0,
+  'Config'              => 0,
+  'Data::Dumper'        => 0,
+  'Exporter'            => 0,
+  'ExtUtils::MakeMaker' => 0,
+  'POSIX'               => 0,
+  'Test::More'          => 0,
+  %PREREQ_PM,
+ },
+ dynamic_config => 1,
+ resources => {
+  bugtracker => "http://rt.cpan.org/Dist/Display.html?Name=$dist",
+  homepage   => "http://search.cpan.org/dist/$dist/",
+  license    => 'http://dev.perl.org/licenses/',
+  repository => "http://git.profvince.com/?p=perl%2Fmodules%2F$dist.git",
+ },
+);
 
 WriteMakefile(
-    NAME          => 'IPC::MorseSignals',
-    AUTHOR        => 'Vincent Pit <perl@profvince.com>',
-    LICENSE       => 'perl',
-    VERSION_FROM  => 'lib/IPC/MorseSignals.pm',
-    ABSTRACT_FROM => 'lib/IPC/MorseSignals.pm',
-    PL_FILES      => {},
-    PREREQ_PM     => {
-        'Bit::MorseSignals' => 0.05,
-        'Carp'              => 0,
-        'POSIX'             => 0,
-        'Time::HiRes'       => 0,
-    },
-    dist          => {
-        PREOP      => 'pod2text lib/IPC/MorseSignals.pm > $(DISTVNAME)/README; '
-                      . build_req,
-        COMPRESS   => 'gzip -9f', SUFFIX => 'gz',
-    },
-    clean         => { FILES => 'IPC-MorseSignals-* *.gcov *.gcda *.gcno cover_db' },
+ NAME             => $name,
+ AUTHOR           => 'Vincent Pit <perl@profvince.com>',
+ LICENSE          => 'perl',
+ VERSION_FROM     => $file,
+ ABSTRACT_FROM    => $file,
+ PL_FILES         => {},
+ PREREQ_PM        => \%PREREQ_PM,
+ MIN_PERL_VERSION => 5.008,
+ META_MERGE       => \%META,
+ dist             => {
+  PREOP    => "pod2text -u $file > \$(DISTVNAME)/README",
+  COMPRESS => 'gzip -9f', SUFFIX => 'gz',
+ },
+ clean            => {
+  FILES => "$dist-* *.gcov *.gcda *.gcno cover_db Debian_CPANTS.txt"
+ },
 );

@@ -14,11 +14,11 @@ my @msgs = qw/€éèë 月語 x tata たTÂ/;
 
 sub cp { join '.', map ord, split //, $_[0] }
 
-my $deuce = new IPC::MorseSignals::Emitter speed => 1024;
-my $pants = new IPC::MorseSignals::Receiver \%SIG, done => sub {
+my $deuce = IPC::MorseSignals::Emitter->new(speed => 1024);
+my $pants = IPC::MorseSignals::Receiver->new(\%SIG, done => sub {
  my $cur = shift @msgs;
  ok($_[1] eq $cur, 'got ' . cp($_[1]) . ', expected ' . cp($cur))
-};
+});
 
 $deuce->post($_) for @msgs;
 $deuce->send($$);

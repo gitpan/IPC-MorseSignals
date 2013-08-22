@@ -1,5 +1,7 @@
 Changes
 MANIFEST
+META.json
+META.yml
 Makefile.PL
 README
 lib/IPC/MorseSignals.pm
@@ -19,10 +21,4 @@ t/60-fork-plain.t
 t/61-fork-utf8.t
 t/62-fork-storable.t
 t/70-speed.t
-t/90-boilerplate.t
-t/91-pod.t
-t/92-pod-coverage.t
-t/95-portability-files.t
-t/99-kwalitee.t
 t/lib/IPC/MorseSignals/TestSuite.pm
-META.yml                                 Module meta-data (added by MakeMaker)
